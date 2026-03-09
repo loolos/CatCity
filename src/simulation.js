@@ -39,6 +39,23 @@ function spawnData(edge, fixed) {
   return { pos: { x: 0, y: fixed }, prevPos: { x: -1, y: fixed }, edge: 'left' };
 }
 
+function facingFromSpawnEdge(edge) {
+  if (edge === 'top') return 'down';
+  if (edge === 'right') return 'left';
+  if (edge === 'bottom') return 'up';
+  return 'right';
+}
+
+function facingFromStep(from, to, fallback) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (dx > 0) return 'right';
+  if (dx < 0) return 'left';
+  if (dy > 0) return 'down';
+  if (dy < 0) return 'up';
+  return fallback;
+}
+
 export class Simulation {
   constructor({ facilities, tunnelPairs, rng }) {
     this.turn = 0;
@@ -75,6 +92,7 @@ export class Simulation {
       id: this.lastCatId,
       pos: spawn.pos,
       prevPos: spawn.prevPos,
+      facing: facingFromSpawnEdge(spawn.edge),
       spawnEdge: spawn.edge,
       hunger: 20 + Math.floor(this.rng() * 25),
       sleepiness: 20 + Math.floor(this.rng() * 25),
@@ -164,8 +182,10 @@ export class Simulation {
 
   moveCat(cat) {
     if (cat.inTunnel) {
-      cat.prevPos = { ...cat.pos };
+      const from = { ...cat.pos };
+      cat.prevPos = from;
       cat.pos = cat.inTunnel.exitPos;
+      cat.facing = facingFromStep(from, cat.pos, cat.facing);
       cat.inTunnel = null;
       this.tryUseFacility(cat);
       return;
@@ -174,7 +194,8 @@ export class Simulation {
     if (cat.serving) return;
 
     const target = this.findTarget(cat);
-    cat.prevPos = { ...cat.pos };
+    const from = { ...cat.pos };
+    cat.prevPos = from;
 
     if (target && target.path.length) {
       const planned = target.path[0];
@@ -191,6 +212,7 @@ export class Simulation {
       cat.hunger = clampNeed(cat.hunger + NEED_GAIN_WANDER_BONUS);
       cat.sleepiness = clampNeed(cat.sleepiness + NEED_GAIN_WANDER_BONUS);
     }
+    cat.facing = facingFromStep(from, cat.pos, cat.facing);
 
     const tunnelExit = this.tunnelMap.get(keyOf(cat.pos));
     if (tunnelExit) {
