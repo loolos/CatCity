@@ -1,5 +1,11 @@
 import { GRID_SIZE, MAX_FACILITY_COUNTS } from './config.js';
 
+const ASSET_BASE_URL = new URL('../public/assets/', import.meta.url);
+
+function assetUrl(relativePath) {
+  return new URL(relativePath, ASSET_BASE_URL).href;
+}
+
 export function getDomRefs() {
   return {
     boardEl: document.querySelector('#board'),
@@ -109,7 +115,7 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
       if (facility) {
         const icon = document.createElement('img');
         icon.className = 'facility-icon';
-        icon.src = `/public/assets/sprites/facilities/${facilityIconName(facility.type)}.svg`;
+        icon.src = assetUrl(`sprites/facilities/${facilityIconName(facility.type)}.svg`);
         icon.alt = facility.type;
         tile.append(icon);
 
@@ -143,7 +149,7 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
     let catEl = existing.get(cat.id);
     if (!catEl) {
       catEl = document.createElement('img');
-      catEl.src = '/public/assets/sprites/cats/cat-default.svg';
+      catEl.src = assetUrl('sprites/cats/cat-default.svg');
       catEl.className = 'cat';
       catEl.dataset.id = String(cat.id);
       catLayerEl.append(catEl);
