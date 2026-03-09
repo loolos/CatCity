@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cat City MVP</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>Cat City MVP</h1>
+        <p class="subtitle">Turn-based deterministic simulation prototype</p>
+      </header>
+
+      <section class="toolbar">
+        <label>Seed <input id="seed-input" value="catcity-seed-01" /></label>
+        <label>Turn Demo Speed
+          <input id="speed-range" type="range" min="120" max="1000" step="20" value="450" />
+          <strong id="speed-value">450ms</strong>
+        </label>
+        <button id="reset-btn">Reset Build</button>
+        <button id="start-btn">Start Simulation</button>
+      </section>
+
+      <section class="tool-panel">
+        <h2>Build Tools</h2>
+        <div class="tools" id="tools"></div>
+        <p id="build-note">Place facilities before starting.</p>
+      </section>
+
+      <section class="hud">
+        <div>Turn: <strong id="turn">0</strong></div>
+        <div>Score: <strong id="score">0</strong></div>
+        <div>Cats: <strong id="cat-count">0</strong></div>
+        <div>Status: <strong id="status">Build Phase</strong></div>
+        <div>Spawn: <strong id="spawn-info">Edge random spawn</strong></div>
+      </section>
+
+      <section class="board-wrap">
+        <div id="board" class="board" aria-label="Game board"></div>
+        <div id="cat-layer" class="cat-layer" aria-hidden="true"></div>
+      </section>
+
+      <section class="result" id="result"></section>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

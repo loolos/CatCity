@@ -1,0 +1,12 @@
+{
+  "name": "catcity-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 4173",
+    "backend": "node backend/mock-backend.js",
+    "backend:run": "./scripts/run-backend.sh"
+  }
+}
