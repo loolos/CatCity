@@ -8,41 +8,74 @@
   </head>
   <body>
     <main class="app">
-      <header>
+      <header class="hero">
+        <p class="eyebrow">Cat City Lab</p>
         <h1>Cat City MVP</h1>
-        <p class="subtitle">Turn-based deterministic simulation prototype</p>
+        <p class="subtitle">Design your cat-friendly city and watch the deterministic simulation unfold.</p>
       </header>
 
-      <section class="toolbar">
-        <label>Seed <input id="seed-input" value="catcity-seed-01" /></label>
-        <label>Turn Demo Speed
-          <input id="speed-range" type="range" min="120" max="1000" step="20" value="450" />
-          <strong id="speed-value">450ms</strong>
-        </label>
-        <button id="reset-btn">Reset Build</button>
-        <button id="start-btn">Start Simulation</button>
-      </section>
+      <div class="layout">
+        <aside class="side-panel">
+          <section class="toolbar panel">
+            <h2>Simulation Controls</h2>
+            <label class="field">
+              <span>Seed</span>
+              <input id="seed-input" value="catcity-seed-01" />
+            </label>
+            <label class="field">
+              <span>Turn Demo Speed</span>
+              <input id="speed-range" type="range" min="120" max="1000" step="20" value="450" />
+              <strong id="speed-value">450ms</strong>
+            </label>
+            <div class="toolbar-actions">
+              <button id="reset-btn">Reset Build</button>
+              <button id="start-btn">Start Simulation</button>
+            </div>
+          </section>
 
-      <section class="tool-panel">
-        <h2>Build Tools</h2>
-        <div class="tools" id="tools"></div>
-        <p id="build-note">Place facilities before starting.</p>
-      </section>
+          <section class="tool-panel panel">
+            <h2>Build Tools</h2>
+            <div class="tools" id="tools"></div>
+            <p id="build-note">Place facilities before starting.</p>
+          </section>
 
-      <section class="hud">
-        <div>Turn: <strong id="turn">0</strong></div>
-        <div>Score: <strong id="score">0</strong></div>
-        <div>Cats: <strong id="cat-count">0</strong></div>
-        <div>Status: <strong id="status">Build Phase</strong></div>
-        <div>Spawn: <strong id="spawn-info">Edge random spawn</strong></div>
-      </section>
+          <section class="hud panel">
+            <div class="hud-card">
+              <span class="hud-label">Turn</span>
+              <strong id="turn">0</strong>
+            </div>
+            <div class="hud-card">
+              <span class="hud-label">Score</span>
+              <strong id="score">0</strong>
+            </div>
+            <div class="hud-card">
+              <span class="hud-label">Cats</span>
+              <strong id="cat-count">0</strong>
+            </div>
+            <div class="hud-card">
+              <span class="hud-label">Status</span>
+              <strong id="status">Build Phase</strong>
+            </div>
+            <div class="hud-card hud-card-wide">
+              <span class="hud-label">Spawn</span>
+              <strong id="spawn-info">Edge random spawn</strong>
+            </div>
+          </section>
 
-      <section class="board-wrap">
-        <div id="board" class="board" aria-label="Game board"></div>
-        <div id="cat-layer" class="cat-layer" aria-hidden="true"></div>
-      </section>
+          <section class="result panel" id="result"></section>
+        </aside>
 
-      <section class="result" id="result"></section>
+        <section class="board-stage panel">
+          <div class="board-heading">
+            <h2>City Board</h2>
+            <p>Click tiles to place facilities during the build phase.</p>
+          </div>
+          <div class="board-wrap">
+            <div id="board" class="board" aria-label="Game board"></div>
+            <div id="cat-layer" class="cat-layer" aria-hidden="true"></div>
+          </div>
+        </section>
+      </div>
     </main>
 
     <script type="module" src="./src/main.js"></script>
