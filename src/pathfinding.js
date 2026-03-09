@@ -15,7 +15,7 @@ export function neighbors(pos, gridSize) {
     .filter((n) => n.x >= 0 && n.y >= 0 && n.x < gridSize && n.y < gridSize);
 }
 
-export function shortestPath(start, goal, gridSize, tunnelMap) {
+export function shortestPath(start, goal, gridSize) {
   if (start.x === goal.x && start.y === goal.y) return [];
 
   const queue = [start];
@@ -26,9 +26,7 @@ export function shortestPath(start, goal, gridSize, tunnelMap) {
     const current = queue.shift();
     if (current.x === goal.x && current.y === goal.y) break;
 
-    const nextNodes = [...neighbors(current, gridSize)];
-    const tunnelTarget = tunnelMap.get(keyOf(current));
-    if (tunnelTarget) nextNodes.push(tunnelTarget);
+    const nextNodes = neighbors(current, gridSize);
 
     for (const next of nextNodes) {
       const k = keyOf(next);

@@ -51,6 +51,9 @@ export class Simulation {
     this.latestSpawnEdge = null;
 
     for (const [a, b] of tunnelPairs) {
+      const horizontal = a.y === b.y;
+      const vertical = a.x === b.x;
+      if (!horizontal && !vertical) continue;
       this.tunnelMap.set(keyOf(a), b);
       this.tunnelMap.set(keyOf(b), a);
     }
@@ -77,6 +80,7 @@ export class Simulation {
       sleepiness: 20 + Math.floor(this.rng() * 25),
       waitingTurns: 0,
       serving: null,
+      inTunnel: null,
       lastSatisfiedNeed: null,
       lastSatisfiedTurn: -999,
     });
@@ -98,7 +102,7 @@ export class Simulation {
     for (const facility of candidates) {
       const usage = this.facilityUsage.get(facility.id);
       const busyPenalty = usage ? usage.remaining : 0;
-      const path = shortestPath(cat.pos, facility.pos, GRID_SIZE, this.tunnelMap);
+      const path = shortestPath(cat.pos, facility.pos, GRID_SIZE);
       if (!path) continue;
       const value = path.length + busyPenalty;
       if (!best || value < best.value) best = { facility, path, value };
@@ -159,6 +163,14 @@ export class Simulation {
   }
 
   moveCat(cat) {
+    if (cat.inTunnel) {
+      cat.prevPos = { ...cat.pos };
+      cat.pos = cat.inTunnel.exitPos;
+      cat.inTunnel = null;
+      this.tryUseFacility(cat);
+      return;
+    }
+
     if (cat.serving) return;
 
     const target = this.findTarget(cat);
@@ -180,10 +192,12 @@ export class Simulation {
       cat.sleepiness = clampNeed(cat.sleepiness + NEED_GAIN_WANDER_BONUS);
     }
 
-    const tunnelTarget = this.tunnelMap.get(keyOf(cat.pos));
-    if (tunnelTarget) cat.pos = tunnelTarget;
-
-    this.tryUseFacility(cat);
+    const tunnelExit = this.tunnelMap.get(keyOf(cat.pos));
+    if (tunnelExit) {
+      cat.inTunnel = { exitPos: tunnelExit };
+    } else {
+      this.tryUseFacility(cat);
+    }
   }
 
   tick() {

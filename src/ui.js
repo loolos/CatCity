@@ -25,7 +25,16 @@ export function applySpeedVisual(tickMs, speedValueEl) {
   document.documentElement.style.setProperty('--cat-move-ms', `${Math.max(80, tickMs - 70)}ms`);
 }
 
-export function renderTools({ toolsEl, tools, selectedTool, selectedDirection, onToolSelected, onDirectionSelected }) {
+export function renderTools({
+  toolsEl,
+  tools,
+  selectedTool,
+  selectedDirection,
+  selectedTunnelOrientation = 'horizontal',
+  onToolSelected,
+  onDirectionSelected,
+  onTunnelOrientationSelected,
+}) {
   toolsEl.innerHTML = '';
   for (const tool of tools) {
     const btn = document.createElement('button');
@@ -47,6 +56,22 @@ export function renderTools({ toolsEl, tools, selectedTool, selectedDirection, o
     dirSelect.addEventListener('change', (e) => onDirectionSelected(e.target.value));
     toolsEl.append(dirSelect);
   }
+
+  if (selectedTool === 'tunnel') {
+    const orientSelect = document.createElement('select');
+    [
+      { value: 'horizontal', text: 'Horizontal' },
+      { value: 'vertical', text: 'Vertical' },
+    ].forEach((opt) => {
+      const op = document.createElement('option');
+      op.value = opt.value;
+      op.textContent = opt.text;
+      op.selected = opt.value === selectedTunnelOrientation;
+      orientSelect.append(op);
+    });
+    orientSelect.addEventListener('change', (e) => onTunnelOrientationSelected?.(e.target.value));
+    toolsEl.append(orientSelect);
+  }
 }
 
 export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelBuffer }) {
@@ -55,7 +80,7 @@ export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelB
     .join(' | ');
   const spawnHint = 'Cats spawn from random map edges and move one tile per turn.';
   if (selectedTool === 'tunnel' && tunnelBuffer) {
-    buildNoteEl.textContent = `${counts} | Select second tunnel endpoint. ${spawnHint}`;
+    buildNoteEl.textContent = `${counts} | Select second tunnel endpoint (same row=horizontal, same col=vertical). ${spawnHint}`;
     return;
   }
   buildNoteEl.textContent = `${counts} | ${spawnHint}`;
@@ -84,7 +109,7 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
       if (facility) {
         const icon = document.createElement('img');
         icon.className = 'facility-icon';
-        icon.src = `/assets/sprites/facilities/${facilityIconName(facility.type)}.svg`;
+        icon.src = `/public/assets/sprites/facilities/${facilityIconName(facility.type)}.svg`;
         icon.alt = facility.type;
         tile.append(icon);
 
@@ -118,7 +143,7 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
     let catEl = existing.get(cat.id);
     if (!catEl) {
       catEl = document.createElement('img');
-      catEl.src = '/assets/sprites/cats/cat-default.svg';
+      catEl.src = '/public/assets/sprites/cats/cat-default.svg';
       catEl.className = 'cat';
       catEl.dataset.id = String(cat.id);
       catLayerEl.append(catEl);

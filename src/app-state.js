@@ -2,6 +2,7 @@ export function createInitialState() {
   return {
     selectedTool: 'fish',
     selectedDirection: 'up',
+    selectedTunnelOrientation: 'horizontal',
     phase: 'build',
     facilities: [],
     tunnelBuffer: null,

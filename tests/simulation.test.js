@@ -19,10 +19,10 @@ test('deterministic seed yields deterministic score', () => {
   assert.deepEqual(run(), run());
 });
 
-test('simulation can use tunnel pairs', () => {
+test('simulation can use tunnel pairs (horizontal or vertical only)', () => {
   const sim = new Simulation({
-    facilities: [{ id: 'f1', type: 'fish', pos: { x: 6, y: 6 } }],
-    tunnelPairs: [[{ x: 0, y: 0 }, { x: 6, y: 5 }]],
+    facilities: [{ id: 'f1', type: 'fish', pos: { x: 6, y: 3 } }],
+    tunnelPairs: [[{ x: 0, y: 3 }, { x: 5, y: 3 }]],
     rng: createRng('seed-b'),
   });
 

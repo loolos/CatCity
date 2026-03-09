@@ -45,6 +45,9 @@ function collectTunnelPairs(facilities) {
     if (used.has(t.id)) continue;
     const pair = facilities.find((f) => f.id === t.pairId);
     if (!pair) continue;
+    const horizontal = t.pos.y === pair.pos.y;
+    const vertical = t.pos.x === pair.pos.x;
+    if (!horizontal && !vertical) continue;
     tunnelPairs.push([t.pos, pair.pos]);
     used.add(t.id);
     used.add(pair.id);
@@ -70,12 +73,17 @@ export class GameController {
       tools: TOOLS,
       selectedTool: this.state.selectedTool,
       selectedDirection: this.state.selectedDirection,
+      selectedTunnelOrientation: this.state.selectedTunnelOrientation,
       onToolSelected: (tool) => {
         this.state.selectedTool = tool;
         this.rerenderStatic();
       },
       onDirectionSelected: (direction) => {
         this.state.selectedDirection = direction;
+      },
+      onTunnelOrientationSelected: (orientation) => {
+        this.state.selectedTunnelOrientation = orientation;
+        this.rerenderStatic();
       },
     });
 
@@ -119,6 +127,14 @@ export class GameController {
 
       const first = this.state.facilities.find((f) => f.id === this.state.tunnelBuffer);
       if (!first || (first.pos.x === x && first.pos.y === y)) return;
+
+      const orient = this.state.selectedTunnelOrientation;
+      const sameRow = first.pos.y === y;
+      const sameCol = first.pos.x === x;
+      const validHorizontal = orient === 'horizontal' && sameRow && first.pos.x !== x;
+      const validVertical = orient === 'vertical' && sameCol && first.pos.y !== y;
+      if (!validHorizontal && !validVertical) return;
+
       const secondId = `tunnel-${Date.now()}-${Math.random()}`;
       this.state.facilities.push({ id: secondId, type, pos: { x, y }, pairId: first.id });
       first.pairId = secondId;
