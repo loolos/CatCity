@@ -1,3 +1,7 @@
+import { GameController } from './game-controller.js';
+
+const app = new GameController();
+app.mount();
 import { GRID_SIZE, MAX_FACILITY_COUNTS } from './config.js';
 import { createRng } from './rng.js';
 import { Simulation } from './simulation.js';

@@ -134,6 +134,7 @@ input {
   position: absolute;
   width: calc(100% / 7 - 6px);
   height: calc(100% / 7 - 6px);
+  transition: left var(--cat-move-ms) linear, top var(--cat-move-ms) linear;
   transition: transform var(--cat-move-ms) linear;
   pointer-events: none;
   left: 0;

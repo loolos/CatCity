@@ -30,3 +30,19 @@ test('simulation can use tunnel pairs', () => {
   assert.equal(sim.turn, 20);
   assert.ok(sim.cats.length > 0);
 });
+
+test('spawn metadata exposes edge and off-board previous position', () => {
+  const sim = new Simulation({ facilities: [], tunnelPairs: [], rng: createRng('seed-c') });
+  sim.spawnCat();
+
+  const cat = sim.cats[0];
+  assert.ok(['top', 'right', 'bottom', 'left'].includes(cat.spawnEdge));
+  assert.equal(sim.latestSpawnEdge, cat.spawnEdge);
+
+  const isOutside =
+    cat.prevPos.x < 0 ||
+    cat.prevPos.y < 0 ||
+    cat.prevPos.x > 6 ||
+    cat.prevPos.y > 6;
+  assert.equal(isOutside, true);
+});

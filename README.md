@@ -30,3 +30,12 @@ Then open `http://localhost:4173`.
 - Use **Turn Demo Speed** slider to control turn playback speed at runtime.
 - Click **Start Simulation** to run a full match.
 - Click **Reset Build** to return to build phase.
+
+
+## Project Structure
+
+- `src/game-controller.js`: App orchestration (build phase, simulation lifecycle, interval loop).
+- `src/ui.js`: DOM querying and rendering helpers (board, cats, HUD, speed label).
+- `src/app-state.js`: Initial app state and tool definitions.
+- `src/simulation.js`: Turn-based simulation core and deterministic game rules.
+
