@@ -20,6 +20,13 @@ function countType(facilities, type) {
   return facilities.filter((f) => f.type === type).length;
 }
 
+function nextDirection(direction) {
+  const order = ['up', 'right', 'down', 'left'];
+  const idx = order.indexOf(direction);
+  if (idx < 0) return 'up';
+  return order[(idx + 1) % order.length];
+}
+
 function removeFacilityAt(state, x, y) {
   const idx = state.facilities.findIndex((f) => posKey(f.pos.x, f.pos.y) === posKey(x, y));
   if (idx < 0) return;
@@ -72,14 +79,10 @@ export class GameController {
       toolsEl: this.dom.toolsEl,
       tools: TOOLS,
       selectedTool: this.state.selectedTool,
-      selectedDirection: this.state.selectedDirection,
       selectedTunnelOrientation: this.state.selectedTunnelOrientation,
       onToolSelected: (tool) => {
         this.state.selectedTool = tool;
         this.rerenderStatic();
-      },
-      onDirectionSelected: (direction) => {
-        this.state.selectedDirection = direction;
       },
       onTunnelOrientationSelected: (orientation) => {
         this.state.selectedTunnelOrientation = orientation;
@@ -146,7 +149,7 @@ export class GameController {
       id: `${type}-${Date.now()}-${Math.random()}`,
       type,
       pos: { x, y },
-      direction: type === 'laser' ? this.state.selectedDirection : undefined,
+      direction: type === 'laser' ? 'up' : undefined,
     });
   }
 
@@ -163,7 +166,7 @@ export class GameController {
     if (idx >= 0) {
       const existing = this.state.facilities[idx];
       if (existing.type === 'laser' && this.state.selectedTool === 'laser') {
-        existing.direction = this.state.selectedDirection;
+        existing.direction = nextDirection(existing.direction);
       }
     } else {
       this.addFacility(this.state.selectedTool, x, y);

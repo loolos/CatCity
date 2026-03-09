@@ -35,10 +35,8 @@ export function renderTools({
   toolsEl,
   tools,
   selectedTool,
-  selectedDirection,
   selectedTunnelOrientation = 'horizontal',
   onToolSelected,
-  onDirectionSelected,
   onTunnelOrientationSelected,
 }) {
   toolsEl.innerHTML = '';
@@ -51,16 +49,10 @@ export function renderTools({
   }
 
   if (selectedTool === 'laser') {
-    const dirSelect = document.createElement('select');
-    ['up', 'right', 'down', 'left'].forEach((dir) => {
-      const op = document.createElement('option');
-      op.value = dir;
-      op.textContent = dir.toUpperCase();
-      op.selected = dir === selectedDirection;
-      dirSelect.append(op);
-    });
-    dirSelect.addEventListener('change', (e) => onDirectionSelected(e.target.value));
-    toolsEl.append(dirSelect);
+    const tip = document.createElement('span');
+    tip.className = 'tool-inline-hint';
+    tip.textContent = 'Click a placed laser to rotate direction';
+    toolsEl.append(tip);
   }
 
   if (selectedTool === 'tunnel') {
@@ -84,9 +76,13 @@ export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelB
   const counts = ['fish', 'bed', 'laser', 'tunnel']
     .map((t) => `${t}: ${facilities.filter((f) => f.type === t).length}/${MAX_FACILITY_COUNTS[t]}`)
     .join(' | ');
-  const spawnHint = 'Cats spawn from random map edges and move one tile per turn.';
+  const spawnHint = 'Cats spawn from random edges and animate one tile each turn.';
   if (selectedTool === 'tunnel' && tunnelBuffer) {
     buildNoteEl.textContent = `${counts} | Select second tunnel endpoint (same row=horizontal, same col=vertical). ${spawnHint}`;
+    return;
+  }
+  if (selectedTool === 'laser') {
+    buildNoteEl.textContent = `${counts} | Place a laser, then click it again to rotate direction. ${spawnHint}`;
     return;
   }
   buildNoteEl.textContent = `${counts} | ${spawnHint}`;
@@ -113,6 +109,7 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
 
       const facility = facilities.find((f) => f.pos.x === x && f.pos.y === y);
       if (facility) {
+        tile.classList.add('has-facility', `facility-${facility.type}`);
         const icon = document.createElement('img');
         icon.className = 'facility-icon';
         icon.src = assetUrl(`sprites/facilities/${facilityIconName(facility.type)}.svg`);
@@ -120,9 +117,10 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
         tile.append(icon);
 
         if (facility.type === 'laser') {
-          const arrow = document.createElement('div');
-          arrow.className = `laser-arrow ${facility.direction}`;
-          arrow.textContent = '▲';
+          const arrow = document.createElement('img');
+          arrow.className = 'laser-arrow';
+          arrow.src = assetUrl(`ui/arrow-${facility.direction}.svg`);
+          arrow.alt = `Laser direction ${facility.direction}`;
           tile.append(arrow);
         }
       }
@@ -135,6 +133,17 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
 function setCatPosition(catEl, pos) {
   catEl.style.left = `calc((100% / ${GRID_SIZE}) * ${pos.x})`;
   catEl.style.top = `calc((100% / ${GRID_SIZE}) * ${pos.y})`;
+}
+
+function setCatFacing(catEl, facing) {
+  const angleByFacing = {
+    up: -90,
+    right: 0,
+    down: 90,
+    left: 180,
+  };
+  const angle = angleByFacing[facing] ?? 0;
+  catEl.style.setProperty('--cat-facing-angle', `${angle}deg`);
 }
 
 export function renderCats({ catLayerEl, sim, animated = true }) {
@@ -156,6 +165,7 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
       existing.delete(cat.id);
 
       setCatPosition(catEl, cat.prevPos);
+      setCatFacing(catEl, cat.facing);
       requestAnimationFrame(() => setCatPosition(catEl, cat.pos));
       continue;
     }
@@ -164,12 +174,14 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
     if (!animated) {
       catEl.style.transition = 'none';
       setCatPosition(catEl, cat.pos);
+      setCatFacing(catEl, cat.facing);
       requestAnimationFrame(() => {
         catEl.style.transition = '';
       });
       continue;
     }
 
+    setCatFacing(catEl, cat.facing);
     setCatPosition(catEl, cat.pos);
   }
 
