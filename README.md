@@ -2,6 +2,7 @@
 
 This repository contains a static frontend MVP focused on deterministic turn-based simulation.
 
+- Try at here: https://loolos.github.io/CatCity/
 ## Implemented MVP Highlights
 
 - 7x7 grid build phase.
