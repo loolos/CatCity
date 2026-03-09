@@ -43,7 +43,8 @@ export function renderTools({
   for (const tool of tools) {
     const btn = document.createElement('button');
     btn.textContent = tool.label;
-    btn.className = selectedTool === tool.id ? 'active' : '';
+    btn.className = `tool-btn${selectedTool === tool.id ? ' active' : ''}`;
+    btn.dataset.tool = tool.id;
     btn.addEventListener('click', () => onToolSelected(tool.id));
     toolsEl.append(btn);
   }
