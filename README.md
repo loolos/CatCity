@@ -24,7 +24,10 @@ Then open `http://localhost:4173`.
 ## Controls
 
 - Select a build tool and click tiles to place facilities.
-- Cats spawn from random map edges and move one tile per turn in simulation logic.
+- Each match picks one fixed map entry tile and one fixed exit tile for cats.
+- Total spawned cats per match is fixed (up to the configured cap), and any cat that reaches the fixed exit tile disappears immediately.
+- The IN tile is spawn-only: cats already on the board cannot move onto it.
+- Poor exits (high hunger/sleepiness or low happiness) apply a score penalty, shown in a dedicated Cat Flow Info panel.
 - The frontend animates each turn so movement is displayed smoothly between tiles.
 - Laser placement supports direction selection.
 - Tunnels must be placed as pairs.
@@ -39,4 +42,3 @@ Then open `http://localhost:4173`.
 - `src/ui.js`: DOM querying and rendering helpers (board, cats, HUD, speed label).
 - `src/app-state.js`: Initial app state and tool definitions.
 - `src/simulation.js`: Turn-based simulation core and deterministic game rules.
-

@@ -8,7 +8,9 @@ import {
   renderBoardStatic,
   renderBuildNote,
   renderCats,
+  renderEntryExitMarkers,
   renderTools,
+  updateFlowInfo,
   updateHud,
 } from './ui.js';
 
@@ -106,6 +108,16 @@ export class GameController {
 
   rerenderDynamic(animated = true) {
     renderCats({ catLayerEl: this.dom.catLayerEl, sim: this.state.sim, animated });
+    renderEntryExitMarkers({ boardEl: this.dom.boardEl, sim: this.state.sim });
+
+    updateFlowInfo({
+      flowEntryEl: this.dom.flowEntryEl,
+      flowExitEl: this.dom.flowExitEl,
+      flowRuleEl: this.dom.flowRuleEl,
+      flowPenaltyEl: this.dom.flowPenaltyEl,
+      flowLatestEl: this.dom.flowLatestEl,
+      sim: this.state.sim,
+    });
     updateHud({
       turnEl: this.dom.turnEl,
       scoreEl: this.dom.scoreEl,

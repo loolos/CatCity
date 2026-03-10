@@ -12,6 +12,8 @@ import {
 } from './config.js';
 import { shortestPath, keyOf } from './pathfinding.js';
 
+const EXIT_HAPPINESS_THRESHOLD = 35;
+
 function clampNeed(v) {
   return Math.max(0, Math.min(100, v));
 }
@@ -39,6 +41,12 @@ function spawnData(edge, fixed) {
   return { pos: { x: 0, y: fixed }, prevPos: { x: -1, y: fixed }, edge: 'left' };
 }
 
+function pathToEdgePoint(fromPos, edgePoint) {
+  const path = shortestPath(fromPos, edgePoint.pos, GRID_SIZE);
+  if (!path?.length) return null;
+  return path;
+}
+
 function facingFromSpawnEdge(edge) {
   if (edge === 'top') return 'down';
   if (edge === 'right') return 'left';
@@ -56,6 +64,10 @@ function facingFromStep(from, to, fallback) {
   return fallback;
 }
 
+function happinessOf(cat) {
+  return clampNeed(100 - Math.round((cat.hunger + cat.sleepiness) / 2));
+}
+
 export class Simulation {
   constructor({ facilities, tunnelPairs, rng }) {
     this.turn = 0;
@@ -65,7 +77,20 @@ export class Simulation {
     this.rng = rng;
     this.finished = false;
     this.tunnelMap = new Map();
-    this.latestSpawnEdge = null;
+    const spawnEdge = Math.floor(this.rng() * 4);
+    const spawnFixed = Math.floor(this.rng() * GRID_SIZE);
+    const exitEdge = (spawnEdge + 2) % 4;
+    const exitFixed = Math.floor(this.rng() * GRID_SIZE);
+    this.spawnPoint = spawnData(spawnEdge, spawnFixed);
+    this.exitPoint = spawnData(exitEdge, exitFixed);
+    this.latestSpawnEdge = this.spawnPoint.edge;
+    this.spawnedCats = 0;
+    this.exitStats = {
+      exitedCats: 0,
+      poorExitCats: 0,
+      totalPenalty: 0,
+      latest: 'No cat has exited yet.',
+    };
 
     for (const [a, b] of tunnelPairs) {
       const horizontal = a.y === b.y;
@@ -79,14 +104,20 @@ export class Simulation {
     this.lastCatId = 0;
   }
 
-  spawnCat() {
-    if (this.cats.length >= MAX_CATS) return;
+  isSpawnTile(pos) {
+    return pos.x === this.spawnPoint.pos.x && pos.y === this.spawnPoint.pos.y;
+  }
 
-    const edge = Math.floor(this.rng() * 4);
-    const fixed = Math.floor(this.rng() * GRID_SIZE);
-    const spawn = spawnData(edge, fixed);
+  isExitTile(pos) {
+    return pos.x === this.exitPoint.pos.x && pos.y === this.exitPoint.pos.y;
+  }
+
+  spawnCat() {
+    if (this.spawnedCats >= MAX_CATS) return;
+    const spawn = this.spawnPoint;
 
     this.lastCatId += 1;
+    this.spawnedCats += 1;
     this.latestSpawnEdge = spawn.edge;
     this.cats.push({
       id: this.lastCatId,
@@ -101,6 +132,8 @@ export class Simulation {
       inTunnel: null,
       lastSatisfiedNeed: null,
       lastSatisfiedTurn: -999,
+      satisfiedCount: 0,
+      exiting: false,
     });
   }
 
@@ -109,6 +142,12 @@ export class Simulation {
   }
 
   findTarget(cat) {
+    if (cat.exiting) {
+      const exitPath = pathToEdgePoint(cat.pos, this.exitPoint);
+      if (!exitPath) return null;
+      return { facility: null, path: exitPath, value: exitPath.length };
+    }
+
     const urgentNeed = cat.hunger >= NEED_THRESHOLD ? 'hunger' : cat.sleepiness >= NEED_THRESHOLD ? 'sleepiness' : null;
     const targetType = urgentNeed === 'hunger' ? 'fish' : urgentNeed === 'sleepiness' ? 'bed' : null;
     if (!targetType) return null;
@@ -144,6 +183,7 @@ export class Simulation {
     const desired = this.maybeApplyLaser(cat, plannedPos);
     const blocked = occupiedTiles.has(keyOf(desired));
     if (blocked) return { ...cat.pos };
+    if (!this.isSpawnTile(cat.pos) && this.isSpawnTile(desired)) return { ...cat.pos };
     return desired;
   }
 
@@ -181,6 +221,8 @@ export class Simulation {
 
         cat.lastSatisfiedNeed = need;
         cat.lastSatisfiedTurn = this.turn;
+        cat.satisfiedCount += 1;
+        if (cat.satisfiedCount >= 2) cat.exiting = true;
         cat.serving = null;
       }
       this.facilityUsage.delete(facilityId);
@@ -226,11 +268,23 @@ export class Simulation {
     cat.facing = facingFromStep(from, cat.pos, cat.facing);
 
     const tunnelExit = this.tunnelMap.get(keyOf(cat.pos));
-    if (tunnelExit) {
+    if (tunnelExit && !cat.exiting) {
       cat.inTunnel = { exitPos: tunnelExit };
     } else {
       this.tryUseFacility(cat);
     }
+  }
+
+  processExit(cat) {
+    const happiness = happinessOf(cat);
+    const poor = cat.hunger >= NEED_THRESHOLD || cat.sleepiness >= NEED_THRESHOLD || happiness <= EXIT_HAPPINESS_THRESHOLD;
+    const penalty = poor ? POINTS.badExitPenalty : 0;
+    this.score -= penalty;
+
+    this.exitStats.exitedCats += 1;
+    this.exitStats.totalPenalty += penalty;
+    if (poor) this.exitStats.poorExitCats += 1;
+    this.exitStats.latest = `Cat #${cat.id} exited | Hunger ${cat.hunger} | Sleepiness ${cat.sleepiness} | Happiness ${happiness}${penalty ? ` | Penalty -${penalty}` : ''}`;
   }
 
   tick() {
@@ -252,6 +306,16 @@ export class Simulation {
       this.moveCat(cat, occupiedTiles);
       occupiedTiles.add(keyOf(cat.pos));
     }
+
+    const remainingCats = [];
+    for (const cat of this.cats) {
+      if (this.isExitTile(cat.pos)) {
+        this.processExit(cat);
+      } else {
+        remainingCats.push(cat);
+      }
+    }
+    this.cats = remainingCats;
 
     if (this.turn >= GAME_TURNS) this.finished = true;
   }

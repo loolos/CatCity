@@ -21,6 +21,11 @@ export function getDomRefs() {
     seedInputEl: document.querySelector('#seed-input'),
     speedRangeEl: document.querySelector('#speed-range'),
     speedValueEl: document.querySelector('#speed-value'),
+    flowEntryEl: document.querySelector('#flow-entry'),
+    flowExitEl: document.querySelector('#flow-exit'),
+    flowRuleEl: document.querySelector('#flow-rule'),
+    flowPenaltyEl: document.querySelector('#flow-penalty'),
+    flowLatestEl: document.querySelector('#flow-latest'),
     startBtnEl: document.querySelector('#start-btn'),
     resetBtnEl: document.querySelector('#reset-btn'),
   };
@@ -77,7 +82,7 @@ export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelB
   const counts = ['fish', 'bed', 'laser', 'tunnel']
     .map((t) => `${t}: ${facilities.filter((f) => f.type === t).length}/${MAX_FACILITY_COUNTS[t]}`)
     .join(' | ');
-  const spawnHint = 'Cats spawn from random edges and animate one tile each turn.';
+  const spawnHint = 'Cats spawn only from fixed IN. Other cats cannot step onto IN. Any cat reaching OUT disappears.';
   if (selectedTool === 'tunnel' && tunnelBuffer) {
     buildNoteEl.textContent = `${counts} | Select second tunnel endpoint (same row=horizontal, same col=vertical). ${spawnHint}`;
     return;
@@ -88,7 +93,6 @@ export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelB
   }
   buildNoteEl.textContent = `${counts} | ${spawnHint}`;
 }
-
 
 function laserTargetForFacility(facility) {
   const directionOffsets = {
@@ -161,6 +165,27 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
   }
 }
 
+export function renderEntryExitMarkers({ boardEl, sim }) {
+  for (const marker of boardEl.querySelectorAll('.edge-marker')) marker.remove();
+  if (!sim?.spawnPoint?.pos || !sim?.exitPoint?.pos) return;
+
+  const points = [
+    { type: 'entry', pos: sim.spawnPoint.pos, edge: sim.spawnPoint.edge },
+    { type: 'exit', pos: sim.exitPoint.pos, edge: sim.exitPoint.edge },
+  ];
+
+  for (const point of points) {
+    const tile = boardEl.querySelector(`[data-x="${point.pos.x}"][data-y="${point.pos.y}"]`);
+    if (!tile) continue;
+
+    const marker = document.createElement('span');
+    marker.className = `edge-marker edge-marker-${point.type}`;
+    marker.textContent = point.type === 'entry' ? 'IN' : 'OUT';
+    marker.title = `${point.type === 'entry' ? 'Spawn' : 'Exit'} (${point.edge})`;
+    tile.append(marker);
+  }
+}
+
 function setCatPosition(catEl, pos) {
   catEl.style.left = `calc((100% / ${GRID_SIZE}) * ${pos.x})`;
   catEl.style.top = `calc((100% / ${GRID_SIZE}) * ${pos.y})`;
@@ -224,9 +249,26 @@ export function updateHud({ turnEl, scoreEl, catCountEl, statusEl, spawnInfoEl, 
   scoreEl.textContent = String(sim?.score ?? 0);
   catCountEl.textContent = String(sim?.cats.length ?? 0);
   statusEl.textContent = status;
-  if (sim?.latestSpawnEdge) {
-    spawnInfoEl.textContent = `Edge random spawn (${sim.latestSpawnEdge})`;
+  if (sim?.spawnPoint?.edge && sim?.exitPoint?.edge) {
+    spawnInfoEl.textContent = `Entry ${sim.spawnPoint.edge} (${sim.spawnPoint.pos.x},${sim.spawnPoint.pos.y}) / Exit ${sim.exitPoint.edge} (${sim.exitPoint.pos.x},${sim.exitPoint.pos.y})`;
   } else {
-    spawnInfoEl.textContent = 'Edge random spawn';
+    spawnInfoEl.textContent = 'Entry/Exit will be fixed when simulation starts';
   }
+}
+
+export function updateFlowInfo({ flowEntryEl, flowExitEl, flowRuleEl, flowPenaltyEl, flowLatestEl, sim }) {
+  if (!sim) {
+    flowEntryEl.textContent = 'Entry: fixed after simulation starts';
+    flowExitEl.textContent = 'Exit: fixed after simulation starts';
+    flowRuleEl.textContent = 'Rule: only new cats can use IN tile.';
+    flowPenaltyEl.textContent = 'Exit penalty: waiting for run.';
+    flowLatestEl.textContent = 'Latest exit: none';
+    return;
+  }
+
+  flowEntryEl.textContent = `Entry tile: ${sim.spawnPoint.edge} (${sim.spawnPoint.pos.x},${sim.spawnPoint.pos.y})`;
+  flowExitEl.textContent = `Exit tile: ${sim.exitPoint.edge} (${sim.exitPoint.pos.x},${sim.exitPoint.pos.y})`;
+  flowRuleEl.textContent = `Rule: IN only spawns cats. Exited ${sim.exitStats.exitedCats} cats.`;
+  flowPenaltyEl.textContent = `Penalty summary: poor exits ${sim.exitStats.poorExitCats}, total -${sim.exitStats.totalPenalty} score.`;
+  flowLatestEl.textContent = `Latest exit: ${sim.exitStats.latest}`;
 }
