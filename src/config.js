@@ -24,5 +24,6 @@ export const MAX_CATS = 10;
 export const POINTS = {
   satisfyNeed: 10,
   loopBonus: 15,
+  satisfiedExitReward: 20,
   badExitPenalty: 12,
 };

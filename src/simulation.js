@@ -110,6 +110,8 @@ export class Simulation {
 
     this.facilityUsage = new Map();
     this.lastCatId = 0;
+    this.lastScorePopupId = 0;
+    this.scorePopups = [];
   }
 
   isSpawnTile(pos) {
@@ -212,6 +214,25 @@ export class Simulation {
     }
   }
 
+  awardScore(cat, points) {
+    if (!points || points <= 0) return;
+    this.score += points;
+    this.lastScorePopupId += 1;
+    this.scorePopups.push({
+      id: this.lastScorePopupId,
+      catId: cat.id,
+      pos: { ...cat.pos },
+      points,
+      ttl: 4,
+    });
+  }
+
+  ageScorePopups() {
+    this.scorePopups = this.scorePopups
+      .map((popup) => ({ ...popup, ttl: popup.ttl - 1 }))
+      .filter((popup) => popup.ttl > 0);
+  }
+
   completeServices() {
     for (const [facilityId, usage] of [...this.facilityUsage.entries()]) {
       usage.remaining -= 1;
@@ -221,10 +242,10 @@ export class Simulation {
       if (cat && facility) {
         const need = facilityNeedType(facility.type);
         cat[need] = 0;
-        this.score += POINTS.satisfyNeed;
+        this.awardScore(cat, POINTS.satisfyNeed);
 
         if (cat.lastSatisfiedNeed && cat.lastSatisfiedNeed !== need && this.turn - cat.lastSatisfiedTurn <= LOOP_WINDOW_TURNS) {
-          this.score += POINTS.loopBonus;
+          this.awardScore(cat, POINTS.loopBonus);
         }
 
         cat.lastSatisfiedNeed = need;
@@ -286,18 +307,21 @@ export class Simulation {
   processExit(cat) {
     const happiness = happinessOf(cat);
     const poor = cat.hunger >= NEED_THRESHOLD || cat.sleepiness >= NEED_THRESHOLD || happiness <= EXIT_HAPPINESS_THRESHOLD;
+    const satisfiedExitReward = !poor && cat.exiting ? POINTS.satisfiedExitReward : 0;
     const penalty = poor ? POINTS.badExitPenalty : 0;
     this.score -= penalty;
+    if (satisfiedExitReward) this.awardScore(cat, satisfiedExitReward);
 
     this.exitStats.exitedCats += 1;
     this.exitStats.totalPenalty += penalty;
     if (poor) this.exitStats.poorExitCats += 1;
-    this.exitStats.latest = `Cat #${cat.id} exited | Hunger ${cat.hunger} | Sleepiness ${cat.sleepiness} | Happiness ${happiness}${penalty ? ` | Penalty -${penalty}` : ''}`;
+    this.exitStats.latest = `Cat #${cat.id} exited | Hunger ${cat.hunger} | Sleepiness ${cat.sleepiness} | Happiness ${happiness}${satisfiedExitReward ? ` | Reward +${satisfiedExitReward}` : ''}${penalty ? ` | Penalty -${penalty}` : ''}`;
   }
 
   tick() {
     if (this.finished) return;
     this.turn += 1;
+    this.ageScorePopups();
 
     if (this.turn === 1 || this.turn % CAT_SPAWN_INTERVAL === 0) this.spawnCat();
 
