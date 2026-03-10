@@ -239,10 +239,13 @@ export class GameController {
   }
 
   startSimulation() {
-    if (this.state.phase !== 'build') return;
+    const canStartFromBuild = this.state.phase === 'build';
+    const canRestartFinishedRun = this.state.phase === 'sim' && this.state.sim?.finished;
+    if (!canStartFromBuild && !canRestartFinishedRun) return;
 
     this.setSpeedFromInput();
     this.state.phase = 'sim';
+    clearInterval(this.state.loopHandle);
     this.dom.resultEl.innerHTML = '';
     this.state.sim = new Simulation({
       facilities: this.state.facilities.filter((f) => f.type !== 'tunnel' || f.pairId),
