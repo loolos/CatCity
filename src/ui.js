@@ -243,6 +243,41 @@ function setCatFacing(catEl, facing) {
   catEl.style.setProperty('--cat-facing-angle', `${angle}deg`);
 }
 
+function scoreTier(points) {
+  if (points >= 20) return 'epic';
+  if (points >= 15) return 'high';
+  if (points >= 10) return 'mid';
+  return 'low';
+}
+
+function setPopupPosition(popupEl, pos) {
+  popupEl.style.left = `calc((100% / ${GRID_SIZE}) * ${pos.x} + (100% / ${GRID_SIZE}) * 0.5)`;
+  popupEl.style.top = `calc((100% / ${GRID_SIZE}) * ${pos.y})`;
+}
+
+function renderScorePopups(catLayerEl, sim) {
+  const existing = new Map(
+    [...catLayerEl.querySelectorAll('.cat-score-popup')].map((el) => [Number(el.dataset.popupId), el])
+  );
+
+  for (const popup of sim.scorePopups ?? []) {
+    let popupEl = existing.get(popup.id);
+    if (!popupEl) {
+      popupEl = document.createElement('span');
+      popupEl.className = 'cat-score-popup';
+      popupEl.dataset.popupId = String(popup.id);
+      catLayerEl.append(popupEl);
+    }
+
+    popupEl.dataset.tier = scoreTier(popup.points);
+    popupEl.textContent = `+${popup.points}`;
+    setPopupPosition(popupEl, popup.pos);
+    existing.delete(popup.id);
+  }
+
+  for (const stale of existing.values()) stale.remove();
+}
+
 function happinessOf(cat) {
   return Math.max(0, Math.min(100, 100 - Math.round((cat.hunger + cat.sleepiness) / 2)));
 }
@@ -337,6 +372,7 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
   }
 
   for (const stale of existing.values()) stale.remove();
+  renderScorePopups(catLayerEl, sim);
 }
 
 export function updateHud({ turnEl, turnProgressEl, scoreEl, catCountEl, statusEl, sim, status }) {
