@@ -304,6 +304,8 @@ input:focus-visible {
   place-items: center;
   position: relative;
   min-height: 0;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
   border-radius: 7px;
   border: 1px solid #566a90;
   background:
@@ -326,6 +328,7 @@ input:focus-visible {
 
 .laser-target-dot {
   position: absolute;
+  z-index: 3;
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -334,6 +337,8 @@ input:focus-visible {
 }
 
 .facility-icon {
+  position: relative;
+  z-index: 2;
   width: 72%;
   height: 72%;
   filter: drop-shadow(0 3px 4px rgb(0 0 0 / 30%));
@@ -341,6 +346,7 @@ input:focus-visible {
 
 .laser-arrow {
   position: absolute;
+  z-index: 4;
   right: 5px;
   bottom: 5px;
   width: 14px;
