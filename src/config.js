@@ -1,4 +1,4 @@
-export const GRID_SIZE = 7;
+export const GRID_SIZE = 5;
 export const MAX_FACILITY_COUNTS = {
   fish: 4,
   bed: 4,
@@ -17,6 +17,7 @@ export const FACILITY_SERVICE_TURNS = {
 
 export const GAME_TURNS = 120;
 export const LOOP_WINDOW_TURNS = 10;
+export const SATISFIED_EMOJI_TURNS = 4; /* show 🐟/💤 for this many turns after satisfaction */
 export const CAT_SPAWN_INTERVAL = 8;
 export const MAX_CATS = 10;
 

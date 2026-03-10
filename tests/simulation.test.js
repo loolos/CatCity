@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../src/rng.js';
-import { POINTS } from '../src/config.js';
+import { GRID_SIZE, POINTS } from '../src/config.js';
 import { planEntryExit, Simulation } from '../src/simulation.js';
 
 test('deterministic seed yields deterministic score', () => {
@@ -41,8 +41,8 @@ test('planEntryExit is deterministic for a given seed and produces opposite edge
 
 test('simulation can use tunnel pairs (horizontal or vertical only)', () => {
   const sim = new Simulation({
-    facilities: [{ id: 'f1', type: 'fish', pos: { x: 6, y: 3 } }],
-    tunnelPairs: [[{ x: 0, y: 3 }, { x: 5, y: 3 }]],
+    facilities: [{ id: 'f1', type: 'fish', pos: { x: GRID_SIZE - 1, y: 2 } }],
+    tunnelPairs: [[{ x: 0, y: 2 }, { x: GRID_SIZE - 1, y: 2 }]],
     rng: createRng('seed-b'),
   });
 
@@ -62,8 +62,8 @@ test('spawn metadata exposes edge and off-board previous position', () => {
   const isOutside =
     cat.prevPos.x < 0 ||
     cat.prevPos.y < 0 ||
-    cat.prevPos.x > 6 ||
-    cat.prevPos.y > 6;
+    cat.prevPos.x >= GRID_SIZE ||
+    cat.prevPos.y >= GRID_SIZE;
   assert.equal(isOutside, true);
 });
 

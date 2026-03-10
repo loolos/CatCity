@@ -1,4 +1,4 @@
-import { GRID_SIZE, MAX_FACILITY_COUNTS, NEED_THRESHOLD } from './config.js';
+import { GRID_SIZE, GAME_TURNS, MAX_FACILITY_COUNTS, NEED_THRESHOLD, SATISFIED_EMOJI_TURNS } from './config.js';
 
 const ASSET_BASE_URL = new URL('../public/assets/', import.meta.url);
 
@@ -12,6 +12,7 @@ export function getDomRefs() {
     catLayerEl: document.querySelector('#cat-layer'),
     toolsEl: document.querySelector('#tools'),
     turnEl: document.querySelector('#turn'),
+    turnProgressEl: document.querySelector('#turn-progress'),
     scoreEl: document.querySelector('#score'),
     catCountEl: document.querySelector('#cat-count'),
     statusEl: document.querySelector('#status'),
@@ -111,20 +112,19 @@ export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelB
   const counts = ['fish', 'bed', 'laser', 'tunnel']
     .map((t) => `${t}: ${facilities.filter((f) => f.type === t).length}/${MAX_FACILITY_COUNTS[t]}`)
     .join(' | ');
-  const spawnHint = 'Cats spawn only from fixed IN. Other cats cannot step onto IN. Any cat reaching OUT disappears.';
   if (selectedTool === 'tunnel' && tunnelBuffer) {
-    buildNoteEl.textContent = `${counts} | Select second tunnel endpoint (same row=horizontal, same col=vertical). ${spawnHint}`;
+    buildNoteEl.textContent = `${counts} | Select second tunnel endpoint (same row=horizontal, same col=vertical).`;
     return;
   }
   if (selectedTool === 'tunnel') {
-    buildNoteEl.textContent = `${counts} | Place tunnel endpoints in one row/col. Click a tunnel to toggle horizontal/vertical display. ${spawnHint}`;
+    buildNoteEl.textContent = `${counts} | Place tunnel endpoints in one row/col. Click a tunnel to toggle horizontal/vertical display.`;
     return;
   }
   if (selectedTool === 'laser') {
-    buildNoteEl.textContent = `${counts} | Place a laser, then click it again to rotate direction. ${spawnHint}`;
+    buildNoteEl.textContent = `${counts} | Place a laser, then click it again to rotate direction.`;
     return;
   }
-  buildNoteEl.textContent = `${counts} | ${spawnHint}`;
+  buildNoteEl.textContent = counts;
 }
 
 function laserTargetForFacility(facility) {
@@ -253,56 +253,99 @@ function catIconByNeeds(cat) {
   return 'cat-default';
 }
 
+function satisfiedEmojiFor(cat, currentTurn) {
+  if (!cat.lastSatisfiedNeed || currentTurn - cat.lastSatisfiedTurn > SATISFIED_EMOJI_TURNS) return null;
+  if (cat.lastSatisfiedNeed === 'hunger') return '🐟';
+  if (cat.lastSatisfiedNeed === 'sleepiness') return '💤';
+  return null;
+}
+
 export function renderCats({ catLayerEl, sim, animated = true }) {
   if (!sim) {
     catLayerEl.innerHTML = '';
     return;
   }
 
-  const existing = new Map([...catLayerEl.querySelectorAll('.cat')].map((el) => [Number(el.dataset.id), el]));
+  const existing = new Map(
+    [...catLayerEl.querySelectorAll('.cat-wrapper')].map((el) => [Number(el.dataset.id), el])
+  );
 
   for (const cat of sim.cats) {
-    let catEl = existing.get(cat.id);
+    let wrapperEl = existing.get(cat.id);
     const iconName = catIconByNeeds(cat);
-    if (!catEl) {
-      catEl = document.createElement('img');
-      catEl.src = assetUrl(`sprites/cats/${iconName}.svg`);
-      catEl.className = 'cat';
-      catEl.dataset.id = String(cat.id);
-      catEl.dataset.icon = iconName;
-      catLayerEl.append(catEl);
+    const satisfiedEmoji = satisfiedEmojiFor(cat, sim.turn);
+
+    if (!wrapperEl) {
+      wrapperEl = document.createElement('div');
+      wrapperEl.className = 'cat-wrapper';
+      wrapperEl.dataset.id = String(cat.id);
+
+      const catImg = document.createElement('img');
+      catImg.src = assetUrl(`sprites/cats/${iconName}.svg`);
+      catImg.className = 'cat';
+      catImg.dataset.icon = iconName;
+      catImg.alt = 'cat';
+      wrapperEl.append(catImg);
+
+      const emojiSpan = document.createElement('span');
+      emojiSpan.className = 'cat-satisfied-emoji';
+      emojiSpan.setAttribute('aria-hidden', 'true');
+      if (satisfiedEmoji) {
+        emojiSpan.textContent = satisfiedEmoji;
+        emojiSpan.classList.add('visible');
+      }
+      wrapperEl.append(emojiSpan);
+
+      catLayerEl.append(wrapperEl);
       existing.delete(cat.id);
 
-      setCatPosition(catEl, cat.prevPos);
-      setCatFacing(catEl, cat.facing);
-      requestAnimationFrame(() => setCatPosition(catEl, cat.pos));
-      continue;
+      setCatPosition(wrapperEl, cat.prevPos);
+      setCatFacing(wrapperEl.querySelector('.cat'), cat.facing);
+      requestAnimationFrame(() => setCatPosition(wrapperEl, cat.pos));
     }
 
     existing.delete(cat.id);
-    if (catEl.dataset.icon !== iconName) {
-      catEl.src = assetUrl(`sprites/cats/${iconName}.svg`);
-      catEl.dataset.icon = iconName;
+
+    const catImg = wrapperEl.querySelector('.cat');
+    const emojiSpan = wrapperEl.querySelector('.cat-satisfied-emoji');
+
+    if (catImg.dataset.icon !== iconName) {
+      catImg.src = assetUrl(`sprites/cats/${iconName}.svg`);
+      catImg.dataset.icon = iconName;
     }
+
+    if (satisfiedEmoji) {
+      emojiSpan.textContent = satisfiedEmoji;
+      emojiSpan.classList.add('visible');
+    } else {
+      emojiSpan.textContent = '';
+      emojiSpan.classList.remove('visible');
+    }
+
     if (!animated) {
-      catEl.style.transition = 'none';
-      setCatPosition(catEl, cat.pos);
-      setCatFacing(catEl, cat.facing);
+      wrapperEl.style.transition = 'none';
+      setCatPosition(wrapperEl, cat.pos);
+      setCatFacing(catImg, cat.facing);
       requestAnimationFrame(() => {
-        catEl.style.transition = '';
+        wrapperEl.style.transition = '';
       });
       continue;
     }
 
-    setCatFacing(catEl, cat.facing);
-    setCatPosition(catEl, cat.pos);
+    setCatFacing(catImg, cat.facing);
+    setCatPosition(wrapperEl, cat.pos);
   }
 
   for (const stale of existing.values()) stale.remove();
 }
 
-export function updateHud({ turnEl, scoreEl, catCountEl, statusEl, sim, status }) {
-  turnEl.textContent = String(sim?.turn ?? 0);
+export function updateHud({ turnEl, turnProgressEl, scoreEl, catCountEl, statusEl, sim, status }) {
+  const turn = sim?.turn ?? 0;
+  turnEl.textContent = String(turn);
+  if (turnProgressEl) {
+    const pct = Math.min(100, (turn / GAME_TURNS) * 100);
+    turnProgressEl.style.width = `${pct}%`;
+  }
   scoreEl.textContent = String(sim?.score ?? 0);
   catCountEl.textContent = String(sim?.cats.length ?? 0);
   statusEl.textContent = status;

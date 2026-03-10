@@ -264,7 +264,33 @@ input:focus-visible {
 .hud {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
+  gap: 6px 4px;
+}
+
+.hud-title {
+  grid-column: 1 / -1;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.hud-turn-progress-wrap {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 999px;
+  background: #1c2942;
+  border: 1px solid #324662;
+  overflow: hidden;
+}
+
+.hud-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  border-radius: 999px;
+  transition: width 180ms ease;
 }
 
 .hud-card {
@@ -272,20 +298,20 @@ input:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  padding: 4px 6px;
+  padding: 5px 8px;
   border: 1px solid #324662;
   border-radius: 8px;
   background: var(--bg-surface-soft);
 }
 
 .hud-card strong {
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   line-height: 1;
 }
 
 .hud-label {
   color: var(--text-muted);
-  font-size: 0.54rem;
+  font-size: 0.66rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -450,20 +476,42 @@ input:focus-visible {
   box-shadow: 0 0 8px rgb(255 113 113 / 45%);
 }
 
-.cat {
+.cat-wrapper {
   position: absolute;
   left: 0;
   top: 0;
-  width: calc(100% / 7 - 6px);
-  height: calc(100% / 7 - 6px);
+  width: calc(100% / 5 - 6px);
+  height: calc(100% / 5 - 6px);
   pointer-events: none;
+  transition:
+    left var(--cat-move-ms) ease-in-out,
+    top var(--cat-move-ms) ease-in-out;
+}
+
+.cat-wrapper .cat {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   transform: rotate(var(--cat-facing-angle));
   transform-origin: 50% 50%;
   filter: drop-shadow(0 2px 3px rgb(0 0 0 / 35%));
-  transition:
-    left var(--cat-move-ms) ease-in-out,
-    top var(--cat-move-ms) ease-in-out,
-    transform calc(var(--cat-move-ms) * 0.75) ease;
+  transition: transform calc(var(--cat-move-ms) * 0.75) ease;
+}
+
+.cat-satisfied-emoji {
+  position: absolute;
+  left: 50%;
+  top: -0.35em;
+  transform: translateX(-50%);
+  font-size: 1.1em;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.cat-satisfied-emoji.visible {
+  opacity: 1;
 }
 
 @media (max-width: 1024px) {

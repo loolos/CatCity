@@ -137,6 +137,7 @@ export class GameController {
     });
     updateHud({
       turnEl: this.dom.turnEl,
+      turnProgressEl: this.dom.turnProgressEl,
       scoreEl: this.dom.scoreEl,
       catCountEl: this.dom.catCountEl,
       statusEl: this.dom.statusEl,
