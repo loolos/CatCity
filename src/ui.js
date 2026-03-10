@@ -62,6 +62,11 @@ export function renderTools({
   }
 
   if (selectedTool === 'tunnel') {
+    const tip = document.createElement('span');
+    tip.className = 'tool-inline-hint';
+    tip.textContent = 'Click a placed tunnel to toggle horizontal / vertical direction';
+    toolsEl.append(tip);
+
     const orientSelect = document.createElement('select');
     [
       { value: 'horizontal', text: 'Horizontal' },
@@ -85,6 +90,10 @@ export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelB
   const spawnHint = 'Cats spawn only from fixed IN. Other cats cannot step onto IN. Any cat reaching OUT disappears.';
   if (selectedTool === 'tunnel' && tunnelBuffer) {
     buildNoteEl.textContent = `${counts} | Select second tunnel endpoint (same row=horizontal, same col=vertical). ${spawnHint}`;
+    return;
+  }
+  if (selectedTool === 'tunnel') {
+    buildNoteEl.textContent = `${counts} | Place tunnel endpoints in one row/col. Click a tunnel to toggle horizontal/vertical display. ${spawnHint}`;
     return;
   }
   if (selectedTool === 'laser') {
@@ -115,6 +124,10 @@ function facilityIconName(type) {
   return 'tunnel';
 }
 
+function tunnelOrientationOf(facility) {
+  return facility.orientation === 'vertical' ? 'vertical' : 'horizontal';
+}
+
 export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
   boardEl.innerHTML = '';
   boardEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
@@ -143,6 +156,10 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
         icon.className = 'facility-icon';
         icon.src = assetUrl(`sprites/facilities/${facilityIconName(facility.type)}.svg`);
         icon.alt = facility.type;
+        if (facility.type === 'tunnel') {
+          icon.classList.add(`facility-tunnel-${tunnelOrientationOf(facility)}`);
+          icon.alt = `tunnel-${tunnelOrientationOf(facility)}`;
+        }
         tile.append(icon);
 
         if (facility.type === 'laser') {
