@@ -15,7 +15,6 @@ export function getDomRefs() {
     scoreEl: document.querySelector('#score'),
     catCountEl: document.querySelector('#cat-count'),
     statusEl: document.querySelector('#status'),
-    spawnInfoEl: document.querySelector('#spawn-info'),
     resultEl: document.querySelector('#result'),
     buildNoteEl: document.querySelector('#build-note'),
     seedInputEl: document.querySelector('#seed-input'),
@@ -302,16 +301,11 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
   for (const stale of existing.values()) stale.remove();
 }
 
-export function updateHud({ turnEl, scoreEl, catCountEl, statusEl, spawnInfoEl, sim, status }) {
+export function updateHud({ turnEl, scoreEl, catCountEl, statusEl, sim, status }) {
   turnEl.textContent = String(sim?.turn ?? 0);
   scoreEl.textContent = String(sim?.score ?? 0);
   catCountEl.textContent = String(sim?.cats.length ?? 0);
   statusEl.textContent = status;
-  if (sim?.spawnPoint?.edge && sim?.exitPoint?.edge) {
-    spawnInfoEl.textContent = `Entry ${sim.spawnPoint.edge} (${sim.spawnPoint.pos.x},${sim.spawnPoint.pos.y}) / Exit ${sim.exitPoint.edge} (${sim.exitPoint.pos.x},${sim.exitPoint.pos.y})`;
-  } else {
-    spawnInfoEl.textContent = 'Entry/Exit are not available';
-  }
 }
 
 export function updateFlowInfo({ flowEntryEl, flowExitEl, flowRuleEl, flowPenaltyEl, flowLatestEl, sim }) {
