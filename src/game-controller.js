@@ -29,6 +29,10 @@ function nextDirection(direction) {
   return order[(idx + 1) % order.length];
 }
 
+function nextTunnelOrientation(orientation) {
+  return orientation === 'vertical' ? 'horizontal' : 'vertical';
+}
+
 function removeFacilityAt(state, x, y) {
   const idx = state.facilities.findIndex((f) => posKey(f.pos.x, f.pos.y) === posKey(x, y));
   if (idx < 0) return;
@@ -136,7 +140,13 @@ export class GameController {
       if (!this.state.tunnelBuffer) {
         const id = `tunnel-${Date.now()}-${Math.random()}`;
         this.state.tunnelBuffer = id;
-        this.state.facilities.push({ id, type, pos: { x, y }, pairId: null });
+        this.state.facilities.push({
+          id,
+          type,
+          pos: { x, y },
+          pairId: null,
+          orientation: this.state.selectedTunnelOrientation,
+        });
         return;
       }
 
@@ -151,8 +161,15 @@ export class GameController {
       if (!validHorizontal && !validVertical) return;
 
       const secondId = `tunnel-${Date.now()}-${Math.random()}`;
-      this.state.facilities.push({ id: secondId, type, pos: { x, y }, pairId: first.id });
+      this.state.facilities.push({
+        id: secondId,
+        type,
+        pos: { x, y },
+        pairId: first.id,
+        orientation: orient,
+      });
       first.pairId = secondId;
+      first.orientation = orient;
       this.state.tunnelBuffer = null;
       return;
     }
@@ -179,6 +196,13 @@ export class GameController {
       const existing = this.state.facilities[idx];
       if (existing.type === 'laser' && this.state.selectedTool !== 'erase') {
         existing.direction = nextDirection(existing.direction);
+      } else if (existing.type === 'tunnel' && this.state.selectedTool !== 'erase') {
+        const next = nextTunnelOrientation(existing.orientation);
+        existing.orientation = next;
+        if (existing.pairId) {
+          const pair = this.state.facilities.find((f) => f.id === existing.pairId);
+          if (pair) pair.orientation = next;
+        }
       }
     } else {
       this.addFacility(this.state.selectedTool, x, y);
