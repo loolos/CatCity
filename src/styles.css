@@ -96,6 +96,7 @@ h1 {
 .toolbar,
 .tool-panel,
 .hud,
+.flow-info,
 .result,
 .board-stage {
   padding: 14px;
@@ -247,6 +248,22 @@ input:focus-visible {
   grid-column: 1 / -1;
 }
 
+
+.flow-info {
+  display: grid;
+  gap: 6px;
+}
+
+.flow-info h2 {
+  font-size: 1rem;
+}
+
+.flow-info p {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
 .result:empty {
   display: none;
 }
@@ -352,6 +369,31 @@ input:focus-visible {
   width: 14px;
   height: 14px;
   opacity: 0.96;
+}
+
+.edge-marker {
+  position: absolute;
+  z-index: 5;
+  top: 5px;
+  left: 5px;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / 25%);
+  text-shadow: 0 1px 0 rgb(0 0 0 / 35%);
+}
+
+.edge-marker-entry {
+  background: linear-gradient(180deg, #22ba86, #1b8964);
+  box-shadow: 0 0 8px rgb(38 203 146 / 45%);
+}
+
+.edge-marker-exit {
+  background: linear-gradient(180deg, #ff7b7b, #d65050);
+  box-shadow: 0 0 8px rgb(255 113 113 / 45%);
 }
 
 .cat {
