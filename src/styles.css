@@ -361,6 +361,17 @@ input:focus-visible {
   filter: drop-shadow(0 3px 4px rgb(0 0 0 / 30%));
 }
 
+.facility-tunnel-horizontal {
+  width: 96%;
+  height: 72%;
+}
+
+.facility-tunnel-vertical {
+  width: 72%;
+  height: 96%;
+  transform: rotate(90deg);
+}
+
 .laser-arrow {
   position: absolute;
   z-index: 4;
