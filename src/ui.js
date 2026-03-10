@@ -47,9 +47,34 @@ export function renderTools({
   toolsEl.innerHTML = '';
   for (const tool of tools) {
     const btn = document.createElement('button');
-    btn.textContent = tool.label;
     btn.className = `tool-btn${selectedTool === tool.id ? ' active' : ''}`;
     btn.dataset.tool = tool.id;
+    btn.title = tool.label;
+
+    const iconWrap = document.createElement('span');
+    iconWrap.className = 'tool-btn-icon-wrap';
+
+    if (tool.id === 'erase') {
+      const eraseIcon = document.createElement('span');
+      eraseIcon.className = 'tool-btn-icon tool-btn-icon-erase';
+      eraseIcon.textContent = '✕';
+      iconWrap.append(eraseIcon);
+    } else {
+      const icon = document.createElement('img');
+      icon.className = 'tool-btn-icon';
+      icon.src = assetUrl(`sprites/facilities/${facilityIconName(tool.id)}.svg`);
+      icon.alt = tool.label;
+      if (tool.id === 'tunnel') {
+        icon.classList.add(`facility-tunnel-${selectedTunnelOrientation}`);
+      }
+      iconWrap.append(icon);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'tool-btn-label';
+    label.textContent = tool.label;
+
+    btn.append(iconWrap, label);
     btn.addEventListener('click', () => onToolSelected(tool.id));
     toolsEl.append(btn);
   }
