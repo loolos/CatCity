@@ -1,4 +1,4 @@
-import { GRID_SIZE, GAME_TURNS, MAX_FACILITY_COUNTS, NEED_THRESHOLD, SATISFIED_EMOJI_TURNS } from './config.js';
+import { CAT_FOOTPRINT_TURNS, GRID_SIZE, GAME_TURNS, MAX_FACILITY_COUNTS, NEED_THRESHOLD, SATISFIED_EMOJI_TURNS } from './config.js';
 
 const ASSET_BASE_URL = new URL('../public/assets/', import.meta.url);
 
@@ -243,6 +243,36 @@ function setCatFacing(catEl, facing) {
   catEl.style.setProperty('--cat-facing-angle', `${angle}deg`);
 }
 
+
+function setFootprintPosition(footprintEl, pos) {
+  footprintEl.style.left = `calc((100% / ${GRID_SIZE}) * ${pos.x})`;
+  footprintEl.style.top = `calc((100% / ${GRID_SIZE}) * ${pos.y})`;
+}
+
+function renderFootprints(catLayerEl, sim) {
+  const existing = new Map(
+    [...catLayerEl.querySelectorAll('.cat-footprint')].map((el) => [el.dataset.footprintId, el])
+  );
+
+  for (const footprint of sim.footprints ?? []) {
+    let footprintEl = existing.get(footprint.id);
+    if (!footprintEl) {
+      footprintEl = document.createElement('span');
+      footprintEl.className = 'cat-footprint';
+      footprintEl.dataset.footprintId = footprint.id;
+      footprintEl.setAttribute('aria-hidden', 'true');
+      footprintEl.textContent = '🐾';
+      catLayerEl.append(footprintEl);
+    }
+
+    footprintEl.style.opacity = String(Math.max(0.15, footprint.ttl / CAT_FOOTPRINT_TURNS));
+    setFootprintPosition(footprintEl, footprint.pos);
+    existing.delete(footprint.id);
+  }
+
+  for (const stale of existing.values()) stale.remove();
+}
+
 function scoreTier(points) {
   if (points >= 20) return 'epic';
   if (points >= 15) return 'high';
@@ -372,6 +402,7 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
   }
 
   for (const stale of existing.values()) stale.remove();
+  renderFootprints(catLayerEl, sim);
   renderScorePopups(catLayerEl, sim);
 }
 

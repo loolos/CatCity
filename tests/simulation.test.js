@@ -188,3 +188,42 @@ test('cats do not move into a tile occupied by another cat', () => {
 
   assert.deepEqual(sim.cats[0].pos, { x: 0, y: 0 });
 });
+
+
+test('cat movement leaves fading footprints for five turns', () => {
+  const sim = new Simulation({ facilities: [], tunnelPairs: [], rng: () => 0 });
+  sim.spawnPoint = { pos: { x: 0, y: 0 }, prevPos: { x: -1, y: 0 }, edge: 'left' };
+  sim.exitPoint = { pos: { x: 4, y: 4 }, prevPos: { x: 5, y: 4 }, edge: 'right' };
+
+  sim.spawnedCats = 10;
+  sim.cats = [
+    {
+      id: 1,
+      pos: { x: 1, y: 1 },
+      prevPos: { x: 1, y: 1 },
+      facing: 'right',
+      spawnEdge: 'left',
+      hunger: 0,
+      sleepiness: 0,
+      waitingTurns: 0,
+      serving: null,
+      inTunnel: null,
+      lastSatisfiedNeed: null,
+      lastSatisfiedTurn: -999,
+      satisfiedCount: 0,
+      exiting: false,
+    },
+  ];
+
+  sim.moveCat(sim.cats[0], new Set());
+  assert.equal(sim.footprints.length, 1);
+  assert.deepEqual(sim.footprints[0].pos, { x: 1, y: 1 });
+  assert.equal(sim.footprints[0].ttl, 5);
+
+  for (let i = 0; i < 4; i += 1) sim.ageFootprints();
+  assert.equal(sim.footprints.length, 1);
+  assert.equal(sim.footprints[0].ttl, 1);
+
+  sim.ageFootprints();
+  assert.equal(sim.footprints.length, 0);
+});
