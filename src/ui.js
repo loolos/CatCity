@@ -114,6 +114,7 @@ function facilityIconName(type) {
 export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
   boardEl.innerHTML = '';
   boardEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
+  boardEl.style.gridTemplateRows = `repeat(${GRID_SIZE}, 1fr)`;
 
   const laserTargetTiles = new Set();
   for (const facility of facilities) {
@@ -131,12 +132,6 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
       tile.dataset.y = String(y);
       tile.addEventListener('click', () => onTileClick(x, y));
 
-      if (laserTargetTiles.has(`${x},${y}`)) {
-        const laserTarget = document.createElement('span');
-        laserTarget.className = 'laser-target-dot';
-        tile.append(laserTarget);
-      }
-
       const facility = facilities.find((f) => f.pos.x === x && f.pos.y === y);
       if (facility) {
         tile.classList.add('has-facility', `facility-${facility.type}`);
@@ -153,6 +148,12 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
           arrow.alt = `Laser direction ${facility.direction}`;
           tile.append(arrow);
         }
+      }
+
+      if (laserTargetTiles.has(`${x},${y}`)) {
+        const laserTarget = document.createElement('span');
+        laserTarget.className = 'laser-target-dot';
+        tile.append(laserTarget);
       }
 
       boardEl.append(tile);
