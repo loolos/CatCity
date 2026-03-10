@@ -16,32 +16,22 @@
 
       <div class="layout">
         <aside class="side-panel">
-          <section class="tool-panel panel">
-            <h2>Build Tools</h2>
-            <div class="tools" id="tools"></div>
-            <p id="build-note">Place facilities before starting.</p>
-          </section>
-
           <section class="hud panel">
             <div class="hud-card">
-              <span class="hud-label">Turn</span>
+              <span class="hud-label">⏱ Turn</span>
               <strong id="turn">0</strong>
             </div>
             <div class="hud-card">
-              <span class="hud-label">Score</span>
+              <span class="hud-label">⭐ Score</span>
               <strong id="score">0</strong>
             </div>
             <div class="hud-card">
-              <span class="hud-label">Cats</span>
+              <span class="hud-label">🐾 Cats</span>
               <strong id="cat-count">0</strong>
             </div>
             <div class="hud-card">
-              <span class="hud-label">Status</span>
+              <span class="hud-label">📌 Status</span>
               <strong id="status">Build Phase</strong>
-            </div>
-            <div class="hud-card hud-card-wide">
-              <span class="hud-label">Spawn</span>
-              <strong id="spawn-info">Entry/Exit will be fixed when simulation starts</strong>
             </div>
           </section>
 
@@ -49,6 +39,11 @@
         </aside>
 
         <section class="board-stage panel">
+          <section class="tool-panel panel tool-panel-inline">
+            <h2>Build Tools</h2>
+            <div class="tools" id="tools"></div>
+            <p id="build-note">Place facilities before starting.</p>
+          </section>
           <div class="board-heading">
             <h2>City Board</h2>
             <p>Click tiles to place facilities during the build phase.</p>

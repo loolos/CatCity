@@ -109,6 +109,10 @@ h1 {
   padding: 7px;
 }
 
+.tool-panel-inline {
+  margin-bottom: 2px;
+}
+
 .toolbar,
 .tool-panel {
   display: grid;
@@ -253,38 +257,38 @@ input:focus-visible {
 
 #build-note {
   color: var(--text-muted);
-  line-height: 1.35;
-  font-size: 0.8rem;
+  line-height: 1.25;
+  font-size: 0.66rem;
 }
 
 .hud {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
 }
 
 .hud-card {
-  display: grid;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 4px;
-  padding: 7px;
+  padding: 4px 6px;
   border: 1px solid #324662;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--bg-surface-soft);
 }
 
 .hud-card strong {
-  font-size: 0.9rem;
+  font-size: 0.72rem;
+  line-height: 1;
 }
 
 .hud-label {
   color: var(--text-muted);
-  font-size: 0.66rem;
+  font-size: 0.54rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.hud-card-wide {
-  grid-column: 1 / -1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 
@@ -318,7 +322,7 @@ input:focus-visible {
 
 .board-stage {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .board-heading p {
@@ -519,12 +523,12 @@ input:focus-visible {
     height: 18px;
   }
 
-  .tool-btn-label {
-    font-size: 0.52rem;
-  }
-
   .hud {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tool-btn-label {
+    font-size: 0.52rem;
   }
 
   .below-game-panels {

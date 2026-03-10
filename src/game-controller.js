@@ -140,7 +140,6 @@ export class GameController {
       scoreEl: this.dom.scoreEl,
       catCountEl: this.dom.catCountEl,
       statusEl: this.dom.statusEl,
-      spawnInfoEl: this.dom.spawnInfoEl,
       sim: flowView,
       status: this.state.phase === 'sim' ? (this.state.sim?.finished ? 'Simulation Finished' : 'Simulation Running') : 'Build Phase',
     });
