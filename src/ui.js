@@ -1,4 +1,4 @@
-import { GRID_SIZE, MAX_FACILITY_COUNTS } from './config.js';
+import { GRID_SIZE, MAX_FACILITY_COUNTS, NEED_THRESHOLD } from './config.js';
 
 const ASSET_BASE_URL = new URL('../public/assets/', import.meta.url);
 
@@ -202,6 +202,16 @@ function setCatFacing(catEl, facing) {
   catEl.style.setProperty('--cat-facing-angle', `${angle}deg`);
 }
 
+function happinessOf(cat) {
+  return Math.max(0, Math.min(100, 100 - Math.round((cat.hunger + cat.sleepiness) / 2)));
+}
+
+function catIconByNeeds(cat) {
+  if (cat.hunger >= NEED_THRESHOLD) return 'cat-hungry';
+  if (happinessOf(cat) <= 40) return 'cat-unhappy';
+  return 'cat-default';
+}
+
 export function renderCats({ catLayerEl, sim, animated = true }) {
   if (!sim) {
     catLayerEl.innerHTML = '';
@@ -212,11 +222,13 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
 
   for (const cat of sim.cats) {
     let catEl = existing.get(cat.id);
+    const iconName = catIconByNeeds(cat);
     if (!catEl) {
       catEl = document.createElement('img');
-      catEl.src = assetUrl('sprites/cats/cat-default.svg');
+      catEl.src = assetUrl(`sprites/cats/${iconName}.svg`);
       catEl.className = 'cat';
       catEl.dataset.id = String(cat.id);
+      catEl.dataset.icon = iconName;
       catLayerEl.append(catEl);
       existing.delete(cat.id);
 
@@ -227,6 +239,10 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
     }
 
     existing.delete(cat.id);
+    if (catEl.dataset.icon !== iconName) {
+      catEl.src = assetUrl(`sprites/cats/${iconName}.svg`);
+      catEl.dataset.icon = iconName;
+    }
     if (!animated) {
       catEl.style.transition = 'none';
       setCatPosition(catEl, cat.pos);
