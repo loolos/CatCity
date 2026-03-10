@@ -8,6 +8,7 @@ export function createInitialState() {
     sim: null,
     plannedFlow: null,
     loopHandle: null,
+    speedMultiplier: 1,
     tickMs: 450,
   };
 }

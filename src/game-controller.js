@@ -49,6 +49,8 @@ function removeFacilityAt(state, x, y) {
   if (state.tunnelBuffer === target.id) state.tunnelBuffer = null;
 }
 
+const BASE_TICK_MS = 450;
+
 function collectTunnelPairs(facilities) {
   const tunnels = facilities.filter((f) => f.type === 'tunnel' && f.pairId);
   const tunnelPairs = [];
@@ -83,8 +85,9 @@ export class GameController {
   }
 
   setSpeedFromInput() {
-    this.state.tickMs = Number(this.dom.speedRangeEl.value);
-    applySpeedVisual(this.state.tickMs, this.dom.speedValueEl);
+    this.state.speedMultiplier = Number(this.dom.speedRangeEl.value);
+    this.state.tickMs = Math.max(45, Math.round(BASE_TICK_MS / this.state.speedMultiplier));
+    applySpeedVisual(this.state.speedMultiplier, this.state.tickMs, this.dom.speedValueEl);
   }
 
   rerenderStatic() {
@@ -257,7 +260,7 @@ export class GameController {
     this.state = createInitialState();
     this.planBuildEntryExit();
     this.dom.resultEl.innerHTML = '';
-    this.dom.speedRangeEl.value = String(this.state.tickMs);
+    this.dom.speedRangeEl.value = String(this.state.speedMultiplier);
     this.setSpeedFromInput();
     this.rerenderStatic();
     this.rerenderDynamic(false);

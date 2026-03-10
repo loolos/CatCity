@@ -31,9 +31,9 @@ export function getDomRefs() {
   };
 }
 
-export function applySpeedVisual(tickMs, speedValueEl) {
-  speedValueEl.textContent = `${tickMs}ms`;
-  document.documentElement.style.setProperty('--cat-move-ms', `${Math.max(80, tickMs - 70)}ms`);
+export function applySpeedVisual(speedMultiplier, tickMs, speedValueEl) {
+  speedValueEl.textContent = `${speedMultiplier}x`;
+  document.documentElement.style.setProperty('--cat-move-ms', `${Math.max(30, Math.round(tickMs * 0.75))}ms`);
 }
 
 export function renderTools({
