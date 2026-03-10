@@ -265,7 +265,7 @@ function renderFootprints(catLayerEl, sim) {
       catLayerEl.append(footprintEl);
     }
 
-    footprintEl.style.opacity = String(Math.max(0.15, footprint.ttl / CAT_FOOTPRINT_TURNS));
+    footprintEl.style.opacity = String(Math.max(0.08, (footprint.ttl / CAT_FOOTPRINT_TURNS) * 0.6));
     setFootprintPosition(footprintEl, footprint.pos);
     existing.delete(footprint.id);
   }
