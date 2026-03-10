@@ -1,4 +1,5 @@
 import {
+  CAT_FOOTPRINT_TURNS,
   CAT_SPAWN_INTERVAL,
   FACILITY_SERVICE_TURNS,
   GAME_TURNS,
@@ -112,6 +113,7 @@ export class Simulation {
     this.lastCatId = 0;
     this.lastScorePopupId = 0;
     this.scorePopups = [];
+    this.footprints = [];
   }
 
   isSpawnTile(pos) {
@@ -233,6 +235,20 @@ export class Simulation {
       .filter((popup) => popup.ttl > 0);
   }
 
+  addFootprint(pos) {
+    this.footprints.push({
+      id: `${this.turn}-${this.lastCatId}-${this.footprints.length + 1}`,
+      pos: { ...pos },
+      ttl: CAT_FOOTPRINT_TURNS,
+    });
+  }
+
+  ageFootprints() {
+    this.footprints = this.footprints
+      .map((footprint) => ({ ...footprint, ttl: footprint.ttl - 1 }))
+      .filter((footprint) => footprint.ttl > 0);
+  }
+
   completeServices() {
     for (const [facilityId, usage] of [...this.facilityUsage.entries()]) {
       usage.remaining -= 1;
@@ -295,6 +311,7 @@ export class Simulation {
       cat.sleepiness = clampNeed(cat.sleepiness + NEED_GAIN_WANDER_BONUS);
     }
     cat.facing = facingFromStep(from, cat.pos, cat.facing);
+    if (cat.pos.x !== from.x || cat.pos.y !== from.y) this.addFootprint(from);
 
     const tunnelExit = this.tunnelMap.get(keyOf(cat.pos));
     if (tunnelExit && !cat.exiting) {
@@ -322,6 +339,7 @@ export class Simulation {
     if (this.finished) return;
     this.turn += 1;
     this.ageScorePopups();
+    this.ageFootprints();
 
     if (this.turn === 1 || this.turn % CAT_SPAWN_INTERVAL === 0) this.spawnCat();
 
