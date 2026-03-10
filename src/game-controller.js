@@ -165,7 +165,7 @@ export class GameController {
 
     if (idx >= 0) {
       const existing = this.state.facilities[idx];
-      if (existing.type === 'laser' && this.state.selectedTool === 'laser') {
+      if (existing.type === 'laser' && this.state.selectedTool !== 'erase') {
         existing.direction = nextDirection(existing.direction);
       }
     } else {

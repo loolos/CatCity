@@ -46,3 +46,49 @@ test('spawn metadata exposes edge and off-board previous position', () => {
     cat.prevPos.y > 6;
   assert.equal(isOutside, true);
 });
+
+
+test('cats do not move into a tile occupied by another cat', () => {
+  const sim = new Simulation({
+    facilities: [{ id: 'f1', type: 'fish', pos: { x: 1, y: 0 } }],
+    tunnelPairs: [],
+    rng: () => 0,
+  });
+
+  sim.cats = [
+    {
+      id: 1,
+      pos: { x: 0, y: 0 },
+      prevPos: { x: 0, y: 0 },
+      facing: 'right',
+      spawnEdge: 'left',
+      hunger: 100,
+      sleepiness: 0,
+      waitingTurns: 0,
+      serving: null,
+      inTunnel: null,
+      lastSatisfiedNeed: null,
+      lastSatisfiedTurn: -999,
+    },
+    {
+      id: 2,
+      pos: { x: 1, y: 0 },
+      prevPos: { x: 1, y: 0 },
+      facing: 'left',
+      spawnEdge: 'top',
+      hunger: 0,
+      sleepiness: 0,
+      waitingTurns: 0,
+      serving: 'f1',
+      inTunnel: null,
+      lastSatisfiedNeed: null,
+      lastSatisfiedTurn: -999,
+    },
+  ];
+
+  const occupiedTiles = new Set(sim.cats.map((cat) => `${cat.pos.x},${cat.pos.y}`));
+  occupiedTiles.delete('0,0');
+  sim.moveCat(sim.cats[0], occupiedTiles);
+
+  assert.deepEqual(sim.cats[0].pos, { x: 0, y: 0 });
+});

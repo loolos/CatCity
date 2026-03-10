@@ -140,6 +140,13 @@ export class Simulation {
     return nextPos;
   }
 
+  resolveMoveTarget(cat, plannedPos, occupiedTiles) {
+    const desired = this.maybeApplyLaser(cat, plannedPos);
+    const blocked = occupiedTiles.has(keyOf(desired));
+    if (blocked) return { ...cat.pos };
+    return desired;
+  }
+
   tryUseFacility(cat) {
     const facility = this.facilities.find((f) => f.pos.x === cat.pos.x && f.pos.y === cat.pos.y && (f.type === 'fish' || f.type === 'bed'));
     if (!facility) return;
@@ -180,8 +187,12 @@ export class Simulation {
     }
   }
 
-  moveCat(cat) {
+  moveCat(cat, occupiedTiles) {
     if (cat.inTunnel) {
+      if (occupiedTiles.has(keyOf(cat.inTunnel.exitPos))) {
+        this.tryUseFacility(cat);
+        return;
+      }
       const from = { ...cat.pos };
       cat.prevPos = from;
       cat.pos = cat.inTunnel.exitPos;
@@ -199,7 +210,7 @@ export class Simulation {
 
     if (target && target.path.length) {
       const planned = target.path[0];
-      cat.pos = this.maybeApplyLaser(cat, planned);
+      cat.pos = this.resolveMoveTarget(cat, planned, occupiedTiles);
     } else {
       const neighbors = [
         { x: cat.pos.x, y: cat.pos.y - 1 },
@@ -208,7 +219,7 @@ export class Simulation {
         { x: cat.pos.x - 1, y: cat.pos.y },
       ].filter((n) => n.x >= 0 && n.y >= 0 && n.x < GRID_SIZE && n.y < GRID_SIZE);
       const selected = neighbors[Math.floor(this.rng() * neighbors.length)] ?? cat.pos;
-      cat.pos = this.maybeApplyLaser(cat, selected);
+      cat.pos = this.resolveMoveTarget(cat, selected, occupiedTiles);
       cat.hunger = clampNeed(cat.hunger + NEED_GAIN_WANDER_BONUS);
       cat.sleepiness = clampNeed(cat.sleepiness + NEED_GAIN_WANDER_BONUS);
     }
@@ -235,7 +246,12 @@ export class Simulation {
 
     this.completeServices();
 
-    for (const cat of this.cats) this.moveCat(cat);
+    const occupiedTiles = new Set(this.cats.map((cat) => keyOf(cat.pos)));
+    for (const cat of this.cats) {
+      occupiedTiles.delete(keyOf(cat.pos));
+      this.moveCat(cat, occupiedTiles);
+      occupiedTiles.add(keyOf(cat.pos));
+    }
 
     if (this.turn >= GAME_TURNS) this.finished = true;
   }

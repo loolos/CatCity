@@ -89,6 +89,21 @@ export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelB
   buildNoteEl.textContent = `${counts} | ${spawnHint}`;
 }
 
+
+function laserTargetForFacility(facility) {
+  const directionOffsets = {
+    up: { x: 0, y: -1 },
+    right: { x: 1, y: 0 },
+    down: { x: 0, y: 1 },
+    left: { x: -1, y: 0 },
+  };
+  const offset = directionOffsets[facility.direction];
+  if (!offset) return null;
+  const target = { x: facility.pos.x + offset.x, y: facility.pos.y + offset.y };
+  const inside = target.x >= 0 && target.y >= 0 && target.x < GRID_SIZE && target.y < GRID_SIZE;
+  return inside ? target : null;
+}
+
 function facilityIconName(type) {
   if (type === 'fish') return 'fish-bowl';
   if (type === 'bed') return 'cat-bed';
@@ -100,6 +115,14 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
   boardEl.innerHTML = '';
   boardEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
 
+  const laserTargetTiles = new Set();
+  for (const facility of facilities) {
+    if (facility.type !== 'laser') continue;
+    const target = laserTargetForFacility(facility);
+    if (!target) continue;
+    laserTargetTiles.add(`${target.x},${target.y}`);
+  }
+
   for (let y = 0; y < GRID_SIZE; y += 1) {
     for (let x = 0; x < GRID_SIZE; x += 1) {
       const tile = document.createElement('button');
@@ -107,6 +130,12 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
       tile.addEventListener('click', () => onTileClick(x, y));
+
+      if (laserTargetTiles.has(`${x},${y}`)) {
+        const laserTarget = document.createElement('span');
+        laserTarget.className = 'laser-target-dot';
+        tile.append(laserTarget);
+      }
 
       const facility = facilities.find((f) => f.pos.x === x && f.pos.y === y);
       if (facility) {
