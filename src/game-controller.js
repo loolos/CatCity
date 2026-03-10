@@ -1,6 +1,6 @@
 import { MAX_FACILITY_COUNTS } from './config.js';
 import { createRng } from './rng.js';
-import { Simulation } from './simulation.js';
+import { planEntryExit, Simulation } from './simulation.js';
 import { TOOLS, createInitialState } from './app-state.js';
 import {
   applySpeedVisual,
@@ -49,6 +49,8 @@ function removeFacilityAt(state, x, y) {
   if (state.tunnelBuffer === target.id) state.tunnelBuffer = null;
 }
 
+const BASE_TICK_MS = 450;
+
 function collectTunnelPairs(facilities) {
   const tunnels = facilities.filter((f) => f.type === 'tunnel' && f.pairId);
   const tunnelPairs = [];
@@ -73,11 +75,19 @@ export class GameController {
   constructor() {
     this.state = createInitialState();
     this.dom = getDomRefs();
+    this.planBuildEntryExit();
+  }
+
+  planBuildEntryExit() {
+    const seed = this.dom.seedInputEl?.value?.trim() || 'default-seed';
+    const plannedFlow = planEntryExit(createRng(seed));
+    this.state.plannedFlow = plannedFlow;
   }
 
   setSpeedFromInput() {
-    this.state.tickMs = Number(this.dom.speedRangeEl.value);
-    applySpeedVisual(this.state.tickMs, this.dom.speedValueEl);
+    this.state.speedMultiplier = Number(this.dom.speedRangeEl.value);
+    this.state.tickMs = Math.max(45, Math.round(BASE_TICK_MS / this.state.speedMultiplier));
+    applySpeedVisual(this.state.speedMultiplier, this.state.tickMs, this.dom.speedValueEl);
   }
 
   rerenderStatic() {
@@ -108,11 +118,14 @@ export class GameController {
       facilities: this.state.facilities,
       onTileClick: (x, y) => this.onTileClick(x, y),
     });
+
+    const markerSim = this.state.sim ?? this.state.plannedFlow;
+    renderEntryExitMarkers({ boardEl: this.dom.boardEl, sim: markerSim });
   }
 
   rerenderDynamic(animated = true) {
     renderCats({ catLayerEl: this.dom.catLayerEl, sim: this.state.sim, animated });
-    renderEntryExitMarkers({ boardEl: this.dom.boardEl, sim: this.state.sim });
+    const flowView = this.state.sim ?? this.state.plannedFlow;
 
     updateFlowInfo({
       flowEntryEl: this.dom.flowEntryEl,
@@ -120,7 +133,7 @@ export class GameController {
       flowRuleEl: this.dom.flowRuleEl,
       flowPenaltyEl: this.dom.flowPenaltyEl,
       flowLatestEl: this.dom.flowLatestEl,
-      sim: this.state.sim,
+      sim: flowView,
     });
     updateHud({
       turnEl: this.dom.turnEl,
@@ -128,7 +141,7 @@ export class GameController {
       catCountEl: this.dom.catCountEl,
       statusEl: this.dom.statusEl,
       spawnInfoEl: this.dom.spawnInfoEl,
-      sim: this.state.sim,
+      sim: flowView,
       status: this.state.phase === 'sim' ? (this.state.sim?.finished ? 'Simulation Finished' : 'Simulation Running') : 'Build Phase',
     });
   }
@@ -245,8 +258,9 @@ export class GameController {
   resetBuild() {
     clearInterval(this.state.loopHandle);
     this.state = createInitialState();
+    this.planBuildEntryExit();
     this.dom.resultEl.innerHTML = '';
-    this.dom.speedRangeEl.value = String(this.state.tickMs);
+    this.dom.speedRangeEl.value = String(this.state.speedMultiplier);
     this.setSpeedFromInput();
     this.rerenderStatic();
     this.rerenderDynamic(false);
@@ -255,6 +269,13 @@ export class GameController {
   mount() {
     this.dom.startBtnEl.addEventListener('click', () => this.startSimulation());
     this.dom.resetBtnEl.addEventListener('click', () => this.resetBuild());
+    this.dom.seedInputEl.addEventListener('change', () => {
+      if (this.state.phase !== 'build') return;
+      this.planBuildEntryExit();
+      this.rerenderStatic();
+      this.rerenderDynamic(false);
+    });
+
     this.dom.speedRangeEl.addEventListener('input', () => {
       this.setSpeedFromInput();
       if (this.state.phase === 'sim') this.restartLoopInterval();

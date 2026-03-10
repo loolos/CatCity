@@ -6,7 +6,9 @@ export function createInitialState() {
     facilities: [],
     tunnelBuffer: null,
     sim: null,
+    plannedFlow: null,
     loopHandle: null,
+    speedMultiplier: 1,
     tickMs: 450,
   };
 }

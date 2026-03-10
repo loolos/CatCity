@@ -31,9 +31,9 @@ export function getDomRefs() {
   };
 }
 
-export function applySpeedVisual(tickMs, speedValueEl) {
-  speedValueEl.textContent = `${tickMs}ms`;
-  document.documentElement.style.setProperty('--cat-move-ms', `${Math.max(80, tickMs - 70)}ms`);
+export function applySpeedVisual(speedMultiplier, tickMs, speedValueEl) {
+  speedValueEl.textContent = `${speedMultiplier}x`;
+  document.documentElement.style.setProperty('--cat-move-ms', `${Math.max(30, Math.round(tickMs * 0.75))}ms`);
 }
 
 export function renderTools({
@@ -310,14 +310,14 @@ export function updateHud({ turnEl, scoreEl, catCountEl, statusEl, spawnInfoEl, 
   if (sim?.spawnPoint?.edge && sim?.exitPoint?.edge) {
     spawnInfoEl.textContent = `Entry ${sim.spawnPoint.edge} (${sim.spawnPoint.pos.x},${sim.spawnPoint.pos.y}) / Exit ${sim.exitPoint.edge} (${sim.exitPoint.pos.x},${sim.exitPoint.pos.y})`;
   } else {
-    spawnInfoEl.textContent = 'Entry/Exit will be fixed when simulation starts';
+    spawnInfoEl.textContent = 'Entry/Exit are not available';
   }
 }
 
 export function updateFlowInfo({ flowEntryEl, flowExitEl, flowRuleEl, flowPenaltyEl, flowLatestEl, sim }) {
-  if (!sim) {
-    flowEntryEl.textContent = 'Entry: fixed after simulation starts';
-    flowExitEl.textContent = 'Exit: fixed after simulation starts';
+  if (!sim?.spawnPoint?.edge || !sim?.exitPoint?.edge) {
+    flowEntryEl.textContent = 'Entry: unavailable';
+    flowExitEl.textContent = 'Exit: unavailable';
     flowRuleEl.textContent = 'Rule: only new cats can use IN tile.';
     flowPenaltyEl.textContent = 'Exit penalty: waiting for run.';
     flowLatestEl.textContent = 'Latest exit: none';
@@ -326,6 +326,14 @@ export function updateFlowInfo({ flowEntryEl, flowExitEl, flowRuleEl, flowPenalt
 
   flowEntryEl.textContent = `Entry tile: ${sim.spawnPoint.edge} (${sim.spawnPoint.pos.x},${sim.spawnPoint.pos.y})`;
   flowExitEl.textContent = `Exit tile: ${sim.exitPoint.edge} (${sim.exitPoint.pos.x},${sim.exitPoint.pos.y})`;
+
+  if (!sim.exitStats) {
+    flowRuleEl.textContent = 'Rule: IN only spawns cats. Exited 0 cats.';
+    flowPenaltyEl.textContent = 'Penalty summary: poor exits 0, total -0 score.';
+    flowLatestEl.textContent = 'Latest exit: none';
+    return;
+  }
+
   flowRuleEl.textContent = `Rule: IN only spawns cats. Exited ${sim.exitStats.exitedCats} cats.`;
   flowPenaltyEl.textContent = `Penalty summary: poor exits ${sim.exitStats.poorExitCats}, total -${sim.exitStats.totalPenalty} score.`;
   flowLatestEl.textContent = `Latest exit: ${sim.exitStats.latest}`;
