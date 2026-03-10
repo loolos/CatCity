@@ -83,7 +83,7 @@ h1 {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-items: start;
 }
@@ -110,7 +110,7 @@ h1 {
 }
 
 .tool-panel-inline {
-  margin-bottom: 2px;
+  margin-top: 2px;
 }
 
 .toolbar,

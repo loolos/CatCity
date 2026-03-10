@@ -15,7 +15,7 @@
       </header>
 
       <div class="layout">
-        <aside class="side-panel">
+        <section class="board-stage panel">
           <section class="hud panel">
             <div class="hud-card">
               <span class="hud-label">⏱ Turn</span>
@@ -35,15 +35,6 @@
             </div>
           </section>
 
-          <section class="result panel" id="result"></section>
-        </aside>
-
-        <section class="board-stage panel">
-          <section class="tool-panel panel tool-panel-inline">
-            <h2>Build Tools</h2>
-            <div class="tools" id="tools"></div>
-            <p id="build-note">Place facilities before starting.</p>
-          </section>
           <div class="board-heading">
             <h2>City Board</h2>
             <p>Click tiles to place facilities during the build phase.</p>
@@ -52,6 +43,14 @@
             <div id="board" class="board" aria-label="Game board"></div>
             <div id="cat-layer" class="cat-layer" aria-hidden="true"></div>
           </div>
+
+          <section class="tool-panel panel tool-panel-inline">
+            <h2>Build Tools</h2>
+            <div class="tools" id="tools"></div>
+            <p id="build-note">Place facilities before starting.</p>
+          </section>
+
+          <section class="result panel" id="result"></section>
         </section>
       </div>
 
