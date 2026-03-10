@@ -282,7 +282,7 @@ function scoreTier(points) {
 
 function setPopupPosition(popupEl, pos) {
   popupEl.style.left = `calc((100% / ${GRID_SIZE}) * ${pos.x} + (100% / ${GRID_SIZE}) * 0.5)`;
-  popupEl.style.top = `calc((100% / ${GRID_SIZE}) * ${pos.y})`;
+  popupEl.style.top = `calc((100% / ${GRID_SIZE}) * ${pos.y} + (100% / ${GRID_SIZE}) * 0.24)`;
 }
 
 function renderScorePopups(catLayerEl, sim) {

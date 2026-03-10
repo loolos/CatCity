@@ -141,6 +141,8 @@ export class Simulation {
       sleepiness: 20 + Math.floor(this.rng() * 25),
       waitingTurns: 0,
       serving: null,
+      servingTurns: 0,
+      justFinishedService: false,
       inTunnel: null,
       lastSatisfiedNeed: null,
       lastSatisfiedTurn: -999,
@@ -212,6 +214,7 @@ export class Simulation {
     if (!usage) {
       this.facilityUsage.set(facility.id, { catId: cat.id, remaining: FACILITY_SERVICE_TURNS[facility.type] });
       cat.serving = facility.id;
+      cat.servingTurns = 0;
       cat.waitingTurns = 0;
     }
   }
@@ -251,10 +254,21 @@ export class Simulation {
 
   completeServices() {
     for (const [facilityId, usage] of [...this.facilityUsage.entries()]) {
-      usage.remaining -= 1;
-      if (usage.remaining > 0) continue;
       const cat = this.cats.find((c) => c.id === usage.catId);
       const facility = this.facilities.find((f) => f.id === facilityId);
+
+      if (!cat || !facility) {
+        this.facilityUsage.delete(facilityId);
+        continue;
+      }
+
+      cat.servingTurns = (cat.servingTurns ?? 0) + 1;
+      const minRequiredTurns = facility.type === 'bed' ? 2 : 1;
+      if (cat.servingTurns < minRequiredTurns) continue;
+
+      usage.remaining -= 1;
+      if (usage.remaining > 0) continue;
+
       if (cat && facility) {
         const need = facilityNeedType(facility.type);
         cat[need] = 0;
@@ -269,12 +283,16 @@ export class Simulation {
         cat.satisfiedCount += 1;
         if (cat.satisfiedCount >= 2) cat.exiting = true;
         cat.serving = null;
+        cat.servingTurns = 0;
+        cat.justFinishedService = true;
       }
       this.facilityUsage.delete(facilityId);
     }
   }
 
   moveCat(cat, occupiedTiles) {
+    if (cat.justFinishedService) return;
+
     if (cat.inTunnel) {
       if (occupiedTiles.has(keyOf(cat.inTunnel.exitPos))) {
         this.tryUseFacility(cat);
@@ -344,6 +362,7 @@ export class Simulation {
     if (this.turn === 1 || this.turn % CAT_SPAWN_INTERVAL === 0) this.spawnCat();
 
     for (const cat of this.cats) {
+      cat.justFinishedService = false;
       cat.hunger = clampNeed(cat.hunger + NEED_GAIN_PER_TURN.hunger);
       cat.sleepiness = clampNeed(cat.sleepiness + NEED_GAIN_PER_TURN.sleepiness);
     }

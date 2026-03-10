@@ -227,3 +227,63 @@ test('cat movement leaves fading footprints for five turns', () => {
   sim.ageFootprints();
   assert.equal(sim.footprints.length, 0);
 });
+
+
+test('resting cat stays on bed for at least two turns before service can complete', () => {
+  const sim = new Simulation({
+    facilities: [{ id: 'b1', type: 'bed', pos: { x: 1, y: 1 } }],
+    tunnelPairs: [],
+    rng: () => 0,
+  });
+
+  sim.spawnedCats = 10;
+  sim.cats = [
+    {
+      id: 1,
+      pos: { x: 1, y: 1 },
+      prevPos: { x: 1, y: 1 },
+      facing: 'right',
+      spawnEdge: 'left',
+      hunger: 0,
+      sleepiness: 95,
+      waitingTurns: 0,
+      serving: null,
+      servingTurns: 0,
+      justFinishedService: false,
+      inTunnel: null,
+      lastSatisfiedNeed: null,
+      lastSatisfiedTurn: -999,
+      satisfiedCount: 0,
+      exiting: false,
+    },
+  ];
+
+  sim.tryUseFacility(sim.cats[0]);
+  assert.equal(sim.cats[0].serving, 'b1');
+
+  sim.turn = 1;
+  sim.completeServices();
+  assert.equal(sim.cats[0].serving, 'b1');
+  assert.equal(sim.cats[0].sleepiness, 95);
+
+  sim.turn = 2;
+  sim.completeServices();
+  assert.equal(sim.cats[0].serving, 'b1');
+  assert.equal(sim.cats[0].sleepiness, 95);
+
+  sim.turn = 3;
+  sim.completeServices();
+  assert.equal(sim.cats[0].serving, 'b1');
+  assert.equal(sim.cats[0].sleepiness, 95);
+
+  sim.turn = 4;
+  sim.completeServices();
+  assert.equal(sim.cats[0].serving, null);
+  assert.equal(sim.cats[0].sleepiness, 0);
+  assert.equal(sim.cats[0].justFinishedService, true);
+
+  const occupied = new Set(['1,1']);
+  occupied.delete('1,1');
+  sim.moveCat(sim.cats[0], occupied);
+  assert.deepEqual(sim.cats[0].pos, { x: 1, y: 1 });
+});
