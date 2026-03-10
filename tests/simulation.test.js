@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../src/rng.js';
 import { POINTS } from '../src/config.js';
-import { Simulation } from '../src/simulation.js';
+import { planEntryExit, Simulation } from '../src/simulation.js';
 
 test('deterministic seed yields deterministic score', () => {
   const baseFacilities = [
@@ -18,6 +18,25 @@ test('deterministic seed yields deterministic score', () => {
   };
 
   assert.deepEqual(run(), run());
+});
+
+
+test('planEntryExit is deterministic for a given seed and produces opposite edges', () => {
+  const makePlan = () => planEntryExit(createRng('seed-plan-preview'));
+  const first = makePlan();
+  const second = makePlan();
+
+  assert.deepEqual(first, second);
+  assert.ok(['top', 'right', 'bottom', 'left'].includes(first.spawnPoint.edge));
+  assert.ok(['top', 'right', 'bottom', 'left'].includes(first.exitPoint.edge));
+
+  const opposite = {
+    top: 'bottom',
+    right: 'left',
+    bottom: 'top',
+    left: 'right',
+  };
+  assert.equal(first.exitPoint.edge, opposite[first.spawnPoint.edge]);
 });
 
 test('simulation can use tunnel pairs (horizontal or vertical only)', () => {

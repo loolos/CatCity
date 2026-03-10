@@ -41,6 +41,17 @@ function spawnData(edge, fixed) {
   return { pos: { x: 0, y: fixed }, prevPos: { x: -1, y: fixed }, edge: 'left' };
 }
 
+export function planEntryExit(rng) {
+  const spawnEdge = Math.floor(rng() * 4);
+  const spawnFixed = Math.floor(rng() * GRID_SIZE);
+  const exitEdge = (spawnEdge + 2) % 4;
+  const exitFixed = Math.floor(rng() * GRID_SIZE);
+  return {
+    spawnPoint: spawnData(spawnEdge, spawnFixed),
+    exitPoint: spawnData(exitEdge, exitFixed),
+  };
+}
+
 function pathToEdgePoint(fromPos, edgePoint) {
   const path = shortestPath(fromPos, edgePoint.pos, GRID_SIZE);
   if (!path?.length) return null;
@@ -77,12 +88,9 @@ export class Simulation {
     this.rng = rng;
     this.finished = false;
     this.tunnelMap = new Map();
-    const spawnEdge = Math.floor(this.rng() * 4);
-    const spawnFixed = Math.floor(this.rng() * GRID_SIZE);
-    const exitEdge = (spawnEdge + 2) % 4;
-    const exitFixed = Math.floor(this.rng() * GRID_SIZE);
-    this.spawnPoint = spawnData(spawnEdge, spawnFixed);
-    this.exitPoint = spawnData(exitEdge, exitFixed);
+    const plannedFlow = planEntryExit(this.rng);
+    this.spawnPoint = plannedFlow.spawnPoint;
+    this.exitPoint = plannedFlow.exitPoint;
     this.latestSpawnEdge = this.spawnPoint.edge;
     this.spawnedCats = 0;
     this.exitStats = {
