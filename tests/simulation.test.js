@@ -39,17 +39,28 @@ test('planEntryExit is deterministic for a given seed and produces opposite edge
   assert.equal(first.exitPoint.edge, opposite[first.spawnPoint.edge]);
 });
 
-test('simulation can use tunnel pairs (horizontal or vertical only)', () => {
+test('entry and exit fixed coordinates keep a minimum gap on opposite edges', () => {
+  for (let i = 0; i < 20; i += 1) {
+    const plan = planEntryExit(createRng(`seed-gap-${i}`));
+    const gap = Math.abs(plan.spawnPoint.pos.x - plan.exitPoint.pos.x) + Math.abs(plan.spawnPoint.pos.y - plan.exitPoint.pos.y);
+    assert.ok(gap >= Math.floor(GRID_SIZE / 2));
+  }
+});
+
+
+test('single-tile horizontal tunnel only allows moving left to right', () => {
   const sim = new Simulation({
-    facilities: [{ id: 'f1', type: 'fish', pos: { x: GRID_SIZE - 1, y: 2 } }],
-    tunnelPairs: [[{ x: 0, y: 2 }, { x: GRID_SIZE - 1, y: 2 }]],
+    facilities: [{ id: 't1', type: 'tunnel', pos: { x: 2, y: 2 }, orientation: 'horizontal' }],
     rng: createRng('seed-b'),
   });
 
-  for (let i = 0; i < 20; i += 1) sim.tick();
-  assert.equal(sim.turn, 20);
-  assert.ok(sim.cats.length > 0);
+  assert.equal(sim.canMoveBetween({ x: 1, y: 2 }, { x: 2, y: 2 }), true);
+  assert.equal(sim.canMoveBetween({ x: 2, y: 2 }, { x: 3, y: 2 }), true);
+  assert.equal(sim.canMoveBetween({ x: 3, y: 2 }, { x: 2, y: 2 }), false);
+  assert.equal(sim.canMoveBetween({ x: 2, y: 1 }, { x: 2, y: 2 }), false);
+  assert.equal(sim.canMoveBetween({ x: 2, y: 2 }, { x: 2, y: 3 }), false);
 });
+
 
 test('spawn metadata exposes edge and off-board previous position', () => {
   const sim = new Simulation({ facilities: [], tunnelPairs: [], rng: createRng('seed-c') });

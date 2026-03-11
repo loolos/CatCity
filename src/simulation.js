@@ -48,19 +48,29 @@ function spawnData(edge, fixed) {
   return { pos: { x: 0, y: fixed }, prevPos: { x: -1, y: fixed }, edge: 'left' };
 }
 
+function pickFarFixed(spawnFixed, rng) {
+  const minGap = Math.max(1, Math.floor(GRID_SIZE / 2));
+  const candidates = [];
+  for (let i = 0; i < GRID_SIZE; i += 1) {
+    if (Math.abs(i - spawnFixed) >= minGap) candidates.push(i);
+  }
+  if (!candidates.length) return (spawnFixed + minGap) % GRID_SIZE;
+  return candidates[Math.floor(rng() * candidates.length)];
+}
+
 export function planEntryExit(rng) {
   const spawnEdge = Math.floor(rng() * 4);
   const spawnFixed = Math.floor(rng() * GRID_SIZE);
   const exitEdge = (spawnEdge + 2) % 4;
-  const exitFixed = Math.floor(rng() * GRID_SIZE);
+  const exitFixed = pickFarFixed(spawnFixed, rng);
   return {
     spawnPoint: spawnData(spawnEdge, spawnFixed),
     exitPoint: spawnData(exitEdge, exitFixed),
   };
 }
 
-function pathToEdgePoint(fromPos, edgePoint) {
-  const path = shortestPath(fromPos, edgePoint.pos, GRID_SIZE);
+function pathToEdgePoint(fromPos, edgePoint, canTraverse = null) {
+  const path = shortestPath(fromPos, edgePoint.pos, GRID_SIZE, canTraverse);
   if (!path?.length) return null;
   return path;
 }
@@ -87,7 +97,7 @@ function happinessOf(cat) {
 }
 
 export class Simulation {
-  constructor({ facilities, tunnelPairs, rng }) {
+  constructor({ facilities, tunnelPairs = [], rng }) {
     this.turn = 0;
     this.score = 0;
     this.cats = [];
@@ -107,12 +117,15 @@ export class Simulation {
       latest: 'No cat has exited yet.',
     };
 
+    for (const tunnel of facilities.filter((f) => f.type === 'tunnel')) {
+      this.tunnelMap.set(keyOf(tunnel.pos), tunnel.orientation === 'vertical' ? 'vertical' : 'horizontal');
+    }
+
     for (const [a, b] of tunnelPairs) {
-      const horizontal = a.y === b.y;
-      const vertical = a.x === b.x;
-      if (!horizontal && !vertical) continue;
-      this.tunnelMap.set(keyOf(a), b);
-      this.tunnelMap.set(keyOf(b), a);
+      const orientation = a.y === b.y ? 'horizontal' : a.x === b.x ? 'vertical' : null;
+      if (!orientation) continue;
+      this.tunnelMap.set(keyOf(a), orientation);
+      this.tunnelMap.set(keyOf(b), orientation);
     }
 
     this.facilityUsage = new Map();
@@ -161,9 +174,24 @@ export class Simulation {
     return this.facilities.filter((f) => f.type === type);
   }
 
+  tunnelAllowsMove(tunnelPos, fromPos, toPos) {
+    const orientation = this.tunnelMap.get(keyOf(tunnelPos));
+    if (!orientation) return true;
+    const dx = toPos.x - fromPos.x;
+    const dy = toPos.y - fromPos.y;
+    if (orientation === 'vertical') return dx === 0 && Math.abs(dy) === 1;
+    return dx === 1 && dy === 0;
+  }
+
+  canMoveBetween(fromPos, toPos) {
+    if (!this.tunnelAllowsMove(fromPos, fromPos, toPos)) return false;
+    if (!this.tunnelAllowsMove(toPos, fromPos, toPos)) return false;
+    return true;
+  }
+
   findTarget(cat) {
     if (cat.exiting) {
-      const exitPath = pathToEdgePoint(cat.pos, this.exitPoint);
+      const exitPath = pathToEdgePoint(cat.pos, this.exitPoint, (from, to) => this.canMoveBetween(from, to));
       if (!exitPath) return null;
       return { facility: null, path: exitPath, value: exitPath.length };
     }
@@ -179,7 +207,7 @@ export class Simulation {
     for (const facility of candidates) {
       const usage = this.facilityUsage.get(facility.id);
       const busyPenalty = usage ? usage.remaining : 0;
-      const path = shortestPath(cat.pos, facility.pos, GRID_SIZE);
+      const path = shortestPath(cat.pos, facility.pos, GRID_SIZE, (from, to) => this.canMoveBetween(from, to));
       if (!path) continue;
       const value = path.length + busyPenalty;
       if (!best || value < best.value) best = { facility, path, value };
@@ -299,21 +327,6 @@ export class Simulation {
 
   moveCat(cat, occupiedTiles) {
     if (cat.justFinishedService) return;
-
-    if (cat.inTunnel) {
-      if (occupiedTiles.has(keyOf(cat.inTunnel.exitPos))) {
-        this.tryUseFacility(cat);
-        return;
-      }
-      const from = { ...cat.pos };
-      cat.prevPos = from;
-      cat.pos = cat.inTunnel.exitPos;
-      cat.facing = facingFromStep(from, cat.pos, cat.facing);
-      cat.inTunnel = null;
-      this.tryUseFacility(cat);
-      return;
-    }
-
     if (cat.serving) return;
 
     const target = this.findTarget(cat);
@@ -329,7 +342,9 @@ export class Simulation {
         { x: cat.pos.x + 1, y: cat.pos.y },
         { x: cat.pos.x, y: cat.pos.y + 1 },
         { x: cat.pos.x - 1, y: cat.pos.y },
-      ].filter((n) => n.x >= 0 && n.y >= 0 && n.x < GRID_SIZE && n.y < GRID_SIZE);
+      ]
+        .filter((n) => n.x >= 0 && n.y >= 0 && n.x < GRID_SIZE && n.y < GRID_SIZE)
+        .filter((n) => this.canMoveBetween(cat.pos, n));
       const selected = neighbors[Math.floor(this.rng() * neighbors.length)] ?? cat.pos;
       cat.pos = this.resolveMoveTarget(cat, selected, occupiedTiles);
       cat.hunger = clampNeed(cat.hunger + NEED_GAIN_WANDER_BONUS);
@@ -338,12 +353,7 @@ export class Simulation {
     cat.facing = facingFromStep(from, cat.pos, cat.facing);
     if (cat.pos.x !== from.x || cat.pos.y !== from.y) this.addFootprint(from);
 
-    const tunnelExit = this.tunnelMap.get(keyOf(cat.pos));
-    if (tunnelExit && !cat.exiting) {
-      cat.inTunnel = { exitPos: tunnelExit };
-    } else {
-      this.tryUseFacility(cat);
-    }
+    this.tryUseFacility(cat);
   }
 
   processExit(cat) {

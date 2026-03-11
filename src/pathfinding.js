@@ -15,7 +15,7 @@ export function neighbors(pos, gridSize) {
     .filter((n) => n.x >= 0 && n.y >= 0 && n.x < gridSize && n.y < gridSize);
 }
 
-export function shortestPath(start, goal, gridSize) {
+export function shortestPath(start, goal, gridSize, canTraverse = null) {
   if (start.x === goal.x && start.y === goal.y) return [];
 
   const queue = [start];
@@ -29,6 +29,7 @@ export function shortestPath(start, goal, gridSize) {
     const nextNodes = neighbors(current, gridSize);
 
     for (const next of nextNodes) {
+      if (canTraverse && !canTraverse(current, next)) continue;
       const k = keyOf(next);
       if (visited.has(k)) continue;
       visited.add(k);

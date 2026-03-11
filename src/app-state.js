@@ -4,7 +4,6 @@ export function createInitialState() {
     selectedTunnelOrientation: 'horizontal',
     phase: 'build',
     facilities: [],
-    tunnelBuffer: null,
     sim: null,
     plannedFlow: null,
     loopHandle: null,
