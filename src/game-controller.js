@@ -1,6 +1,6 @@
 import { MAX_FACILITY_COUNTS } from './config.js';
 import { createRng } from './rng.js';
-import { planEntryExit, Simulation } from './simulation.js';
+import { planMapLayout, Simulation } from './simulation.js';
 import { TOOLS, createInitialState } from './app-state.js';
 import {
   applySpeedVisual,
@@ -51,8 +51,9 @@ export class GameController {
 
   planBuildEntryExit() {
     const seed = this.dom.seedInputEl?.value?.trim() || 'default-seed';
-    const plannedFlow = planEntryExit(createRng(seed));
+    const plannedFlow = planMapLayout(createRng(seed));
     this.state.plannedFlow = plannedFlow;
+    this.state.obstacles = plannedFlow.obstacles;
   }
 
   setSpeedFromInput() {
@@ -86,6 +87,7 @@ export class GameController {
     renderBoardStatic({
       boardEl: this.dom.boardEl,
       facilities: this.state.facilities,
+      obstacles: this.state.obstacles,
       facilityUsage: this.state.sim?.facilityUsage ?? null,
       onTileClick: (x, y) => this.onTileClick(x, y),
     });
@@ -141,6 +143,7 @@ export class GameController {
 
   onTileClick(x, y) {
     if (this.state.phase !== 'build') return;
+    if (this.state.obstacles.some((o) => o.x === x && o.y === y)) return;
 
     const idx = this.state.facilities.findIndex((f) => posKey(f.pos.x, f.pos.y) === posKey(x, y));
     if (this.state.selectedTool === 'erase') {
@@ -188,6 +191,7 @@ export class GameController {
     this.dom.resultEl.innerHTML = '';
     this.state.sim = new Simulation({
       facilities: this.state.facilities,
+      obstacles: this.state.obstacles,
       rng: createRng(this.dom.seedInputEl.value.trim() || 'default-seed'),
     });
 

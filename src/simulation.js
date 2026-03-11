@@ -9,6 +9,7 @@ import {
   NEED_GAIN_PER_TURN,
   NEED_GAIN_WANDER_BONUS,
   NEED_THRESHOLD,
+  OBSTACLE_COUNT_RANGE,
   POINTS,
 } from './config.js';
 import { shortestPath, keyOf } from './pathfinding.js';
@@ -69,6 +70,49 @@ export function planEntryExit(rng) {
   };
 }
 
+function randomIntInRange(rng, min, max) {
+  return min + Math.floor(rng() * (max - min + 1));
+}
+
+export function planObstacles(rng, spawnPoint, exitPoint) {
+  const blockedKeys = new Set([keyOf(spawnPoint.pos), keyOf(exitPoint.pos)]);
+  const candidates = [];
+  for (let y = 0; y < GRID_SIZE; y += 1) {
+    for (let x = 0; x < GRID_SIZE; x += 1) {
+      const k = keyOf({ x, y });
+      if (!blockedKeys.has(k)) candidates.push({ x, y });
+    }
+  }
+
+  const targetCount = randomIntInRange(rng, OBSTACLE_COUNT_RANGE.min, OBSTACLE_COUNT_RANGE.max);
+  const obstacles = [];
+  const obstacleSet = new Set();
+
+  for (let i = candidates.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  for (const pos of candidates) {
+    if (obstacles.length >= targetCount) break;
+    obstacleSet.add(keyOf(pos));
+    const hasPath = shortestPath(spawnPoint.pos, exitPoint.pos, GRID_SIZE, (_from, to) => !obstacleSet.has(keyOf(to)));
+    if (hasPath?.length) {
+      obstacles.push(pos);
+    } else {
+      obstacleSet.delete(keyOf(pos));
+    }
+  }
+
+  return obstacles;
+}
+
+export function planMapLayout(rng) {
+  const { spawnPoint, exitPoint } = planEntryExit(rng);
+  const obstacles = planObstacles(rng, spawnPoint, exitPoint);
+  return { spawnPoint, exitPoint, obstacles };
+}
+
 function pathToEdgePoint(fromPos, edgePoint, canTraverse = null) {
   const path = shortestPath(fromPos, edgePoint.pos, GRID_SIZE, canTraverse);
   if (!path?.length) return null;
@@ -97,7 +141,7 @@ function happinessOf(cat) {
 }
 
 export class Simulation {
-  constructor({ facilities, tunnelPairs = [], rng }) {
+  constructor({ facilities, tunnelPairs = [], obstacles = [], rng }) {
     this.turn = 0;
     this.score = 0;
     this.cats = [];
@@ -108,7 +152,10 @@ export class Simulation {
     const plannedFlow = planEntryExit(this.rng);
     this.spawnPoint = plannedFlow.spawnPoint;
     this.exitPoint = plannedFlow.exitPoint;
+    this.obstacles = obstacles;
+    this.obstacleSet = new Set(this.obstacles.map((pos) => keyOf(pos)));
     this.latestSpawnEdge = this.spawnPoint.edge;
+    this.spawnBlocked = false;
     this.spawnedCats = 0;
     this.exitStats = {
       exitedCats: 0,
@@ -144,7 +191,7 @@ export class Simulation {
   }
 
   spawnCat() {
-    if (this.spawnedCats >= MAX_CATS) return;
+    if (this.spawnedCats >= MAX_CATS || this.spawnBlocked) return;
     const spawn = this.spawnPoint;
 
     this.lastCatId += 1;
@@ -167,6 +214,7 @@ export class Simulation {
       lastSatisfiedTurn: -999,
       satisfiedCount: 0,
       exiting: false,
+      hasLeftSpawn: false,
     });
   }
 
@@ -184,6 +232,7 @@ export class Simulation {
   }
 
   canMoveBetween(fromPos, toPos) {
+    if (this.obstacleSet.has(keyOf(toPos))) return false;
     if (!this.tunnelAllowsMove(fromPos, fromPos, toPos)) return false;
     if (!this.tunnelAllowsMove(toPos, fromPos, toPos)) return false;
     return true;
@@ -231,7 +280,7 @@ export class Simulation {
     const desired = this.maybeApplyLaser(cat, plannedPos);
     const blocked = occupiedTiles.has(keyOf(desired));
     if (blocked) return { ...cat.pos };
-    if (!this.isSpawnTile(cat.pos) && this.isSpawnTile(desired)) return { ...cat.pos };
+    if (this.obstacleSet.has(keyOf(desired))) return { ...cat.pos };
     return desired;
   }
 
@@ -352,6 +401,8 @@ export class Simulation {
     }
     cat.facing = facingFromStep(from, cat.pos, cat.facing);
     if (cat.pos.x !== from.x || cat.pos.y !== from.y) this.addFootprint(from);
+    if (!cat.hasLeftSpawn && !this.isSpawnTile(cat.pos)) cat.hasLeftSpawn = true;
+    if (cat.hasLeftSpawn && this.isSpawnTile(cat.pos)) this.spawnBlocked = true;
 
     this.tryUseFacility(cat);
   }
