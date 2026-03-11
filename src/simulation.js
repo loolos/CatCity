@@ -25,6 +25,12 @@ function facilityNeedType(type) {
   return null;
 }
 
+function catNeedsFacility(cat, facilityType) {
+  const need = facilityNeedType(facilityType);
+  if (!need) return false;
+  return cat[need] >= NEED_THRESHOLD;
+}
+
 function guidanceFromLaser(laserDirection) {
   const map = {
     up: { x: 0, y: -1 },
@@ -204,6 +210,7 @@ export class Simulation {
   tryUseFacility(cat) {
     const facility = this.facilities.find((f) => f.pos.x === cat.pos.x && f.pos.y === cat.pos.y && (f.type === 'fish' || f.type === 'bed'));
     if (!facility) return;
+    if (cat.exiting || !catNeedsFacility(cat, facility.type)) return;
 
     const usage = this.facilityUsage.get(facility.id);
     if (usage && usage.catId !== cat.id) {
@@ -281,7 +288,7 @@ export class Simulation {
         cat.lastSatisfiedNeed = need;
         cat.lastSatisfiedTurn = this.turn;
         cat.satisfiedCount += 1;
-        if (cat.satisfiedCount >= 2) cat.exiting = true;
+        cat.exiting = true;
         cat.serving = null;
         cat.servingTurns = 0;
         cat.justFinishedService = true;

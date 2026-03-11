@@ -287,3 +287,51 @@ test('resting cat stays on bed for at least two turns before service can complet
   sim.moveCat(sim.cats[0], occupied);
   assert.deepEqual(sim.cats[0].pos, { x: 1, y: 1 });
 });
+
+test('cat leaves after being satisfied once and will not keep using facilities when full', () => {
+  const sim = new Simulation({
+    facilities: [
+      { id: 'f1', type: 'fish', pos: { x: 1, y: 1 } },
+      { id: 'b1', type: 'bed', pos: { x: 1, y: 1 } },
+    ],
+    tunnelPairs: [],
+    rng: () => 0,
+  });
+
+  sim.spawnedCats = 10;
+  sim.cats = [
+    {
+      id: 1,
+      pos: { x: 1, y: 1 },
+      prevPos: { x: 1, y: 1 },
+      facing: 'right',
+      spawnEdge: 'left',
+      hunger: 95,
+      sleepiness: 0,
+      waitingTurns: 0,
+      serving: null,
+      servingTurns: 0,
+      justFinishedService: false,
+      inTunnel: null,
+      lastSatisfiedNeed: null,
+      lastSatisfiedTurn: -999,
+      satisfiedCount: 0,
+      exiting: false,
+    },
+  ];
+
+  sim.tryUseFacility(sim.cats[0]);
+  assert.equal(sim.cats[0].serving, 'f1');
+
+  sim.turn = 1;
+  sim.completeServices();
+  sim.turn = 2;
+  sim.completeServices();
+
+  assert.equal(sim.cats[0].hunger, 0);
+  assert.equal(sim.cats[0].exiting, true);
+
+  sim.cats[0].justFinishedService = false;
+  sim.tryUseFacility(sim.cats[0]);
+  assert.equal(sim.cats[0].serving, null);
+});
