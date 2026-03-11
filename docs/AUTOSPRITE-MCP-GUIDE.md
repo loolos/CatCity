@@ -1,71 +1,73 @@
-# AutoSprite MCP 使用说明
+# AutoSprite MCP Guide
 
-AutoSprite 通过 MCP 提供 AI 精灵表生成，配置已在 `.cursor/mcp.json` 中。重载 MCP 后，Agent 可调用以下工具。
+AutoSprite provides AI spritesheet generation via MCP. Configuration lives in `.cursor/mcp.json`. After reloading MCP, agents can call the tools below.
 
-## 确保已连接
+## Ensuring connection
 
-- 在 Cursor 中执行 **Reload MCP** 或重启 Cursor，使 `autosprite` 出现在 MCP 列表。
-- 若仍无 autosprite，检查 API Key 是否有效、网络是否可访问 `https://www.autosprite.io/api/mcp`。
+- In Cursor, run **Reload MCP** or restart Cursor so the AutoSprite server (e.g. `project-0-CatCity-autosprite`) appears in the MCP list.
+- If it does not appear, check that the API key is valid and that `https://www.autosprite.io/api/mcp` is reachable.
 
-## 可用工具（19 个）
+## Available tools (19)
 
-### 账户
+### Account
 
-| 工具 | 说明 |
-|------|------|
-| `get_account` | 查看积分余额（生成前建议先查） |
+| Tool | Description |
+|------|-------------|
+| `get_account` | Check credit balance (call before generating). |
 
-### 角色（Characters）
+### Characters
 
-| 工具 | 说明 |
-|------|------|
-| `create_character` | 用文字描述创建新角色 |
-| `get_character` | 获取指定角色详情（含精灵表） |
-| `list_characters` | 分页/搜索列出你的角色 |
+| Tool | Description |
+|------|-------------|
+| `create_character` | Create a new character from a text description. |
+| `get_character` | Get details for a character, including spritesheets. |
+| `list_characters` | List your characters with pagination and search. |
 
-### 精灵表（Spritesheets）
+### Spritesheets
 
-| 工具 | 说明 |
-|------|------|
-| `generate_spritesheet` | 生成动画并导出精灵表（会返回用量信息） |
-| `regenerate_spritesheet` | 从已有视频按不同尺寸重新生成精灵表（免费） |
-| `get_spritesheet` | 获取某张精灵表及下载 URL |
-| `list_spritesheets` | 列出某角色的精灵表 |
+| Tool | Description |
+|------|-------------|
+| `generate_spritesheet` | Generate animations and export a spritesheet (returns usage info). |
+| `regenerate_spritesheet` | Regenerate spritesheets at different sizes from existing video (free). |
+| `get_spritesheet` | Get a spritesheet and its download URL. |
+| `list_spritesheets` | List spritesheets for a character. |
 
-### 任务（Jobs）
+### Jobs
 
-| 工具 | 说明 |
-|------|------|
-| `get_job_status` | 查询精灵表导出任务状态 |
-| `list_jobs` | 列出导出任务（用 jobId 查状态） |
+| Tool | Description |
+|------|-------------|
+| `get_job_status` | Check spritesheet export job status. |
+| `list_jobs` | List export jobs (use jobId for status checks). |
 
-### 资产（Assets，静态物体/道具）
+### Assets (props / static objects)
 
-| 工具 | 说明 |
-|------|------|
-| `create_asset` | 用描述创建新资产 |
-| `get_asset` | 获取资产详情 |
-| `list_assets` | 列出资产 |
-| `generate_asset_preview` | 生成资产预览图 |
-| `generate_asset_3d_model` | 从资产图生成 3D 模型 |
-| `animate_asset` | 生成资产动画视频 |
-| `generate_asset_spritesheet` | 从资产生成精灵表 |
-| `get_asset_spritesheet` | 获取资产的精灵表 |
-| `get_asset_job_status` | 查询资产生成任务状态 |
+| Tool | Description |
+|------|-------------|
+| `create_asset` | Save an asset from an image URL. |
+| `get_asset` | Get details for an asset. |
+| `list_assets` | List your assets. |
+| `generate_asset_preview` | Generate preview images for an asset (category, description, style). |
+| `generate_asset_3d_model` | Generate a 3D model from an asset image. |
+| `animate_asset` | Generate an animation video from an asset. |
+| `generate_asset_spritesheet` | Generate a spritesheet from an asset’s animation (frameSize, maxFrames, removeBg). |
+| `get_asset_spritesheet` | Get spritesheet info and download URL for an asset. |
+| `get_asset_job_status` | Check status of an asset animation or spritesheet job. |
 
-## 推荐流程（本项目中生成精灵表）
+## Recommended workflow (spritesheet in this project)
 
-1. **查余额**：调用 `get_account` 确认积分。
-2. **创建角色或资产**：
-   - 角色动画：`create_character`（文字描述）→ 再 `generate_spritesheet` 选动画类型（idle, walk, run, jump, attack 等）。
-   - 静态道具/设施（如鱼碗）：`create_asset`（描述）→ `generate_asset_spritesheet` 或 `generate_asset_preview`。
-3. **查任务**：导出是异步的，用 `get_job_status` 或 `get_asset_job_status` 轮询直到完成。
-4. **取文件**：用 `get_spritesheet` 或 `get_asset_spritesheet` 拿到下载 URL，再保存到 `public/assets/sprites/` 等目录。
+1. **Check balance**: Call `get_account` to confirm credits.
+2. **Create character or asset**:
+   - **Character animations**: `create_character` (text description) → then `generate_spritesheet` with animation types (idle, walk, run, jump, attack, etc.).
+   - **Static props** (e.g. fish bowl): `generate_asset_preview` (category, description, style) → `create_asset` (name, imageUrl) → `animate_asset` (animationPrompt) → poll `get_asset_job_status` → `generate_asset_spritesheet` (frameSize, maxFrames, removeBg) → poll again → download from `spritesheetUrl`.
+3. **Poll jobs**: Exports are async; use `get_job_status` or `get_asset_job_status` with the returned `jobId`. Wait at least 30 seconds between checks.
+4. **Save file**: Download from the returned URL and save under `public/assets/sprites/` (e.g. `facilities/<name>-sheet.png`).
 
-## 示例（让 Agent 执行）
+## Example prompts (for agents)
 
-- “用 autosprite 查一下我账户余额。”
-- “用 autosprite 创建一个 2D 小猫角色，并生成 idle 和 walk 的精灵表。”
-- “用 autosprite 根据‘蓝色圆鱼缸、橙色小鱼’生成一个资产精灵表，导出后放到项目的 facilities 里。”
+- “Use AutoSprite to check my account balance.”
+- “Use AutoSprite to create a 2D cat character and generate idle and walk spritesheets.”
+- “Use AutoSprite to generate an asset spritesheet for a blue round fish bowl with orange fish and save it to the project’s facilities folder.”
 
-导出格式支持 Unity、Godot、GameMaker、Phaser、RPG Maker 等，可在生成或导出时指定。
+Export formats support Unity, Godot, GameMaker, Phaser, RPG Maker, and others; specify when generating or exporting.
+
+For the full pipeline (pixel layout, black-background-as-transparent, in-game usage), see **MCP-IMAGE-GENERATION-AGENT-GUIDE.md** § 8.
