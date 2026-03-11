@@ -59,6 +59,13 @@ export function renderTools({
       eraseIcon.className = 'tool-btn-icon tool-btn-icon-erase';
       eraseIcon.textContent = '✕';
       iconWrap.append(eraseIcon);
+    } else if (tool.id === 'fish') {
+      const icon = document.createElement('span');
+      icon.className = 'tool-btn-icon facility-icon-fish-bowl';
+      icon.style.backgroundImage = `url(${assetUrl('sprites/facilities/fish-bowl-sheet.png')})`;
+      icon.style.backgroundPosition = fishBowlBackgroundPosition2x2(FISH_BOWL_FRAME_COUNT - 1);
+      icon.setAttribute('aria-hidden', 'true');
+      iconWrap.append(icon);
     } else {
       const icon = document.createElement('img');
       icon.className = 'tool-btn-icon';
@@ -152,7 +159,27 @@ function tunnelOrientationOf(facility) {
   return facility.orientation === 'vertical' ? 'vertical' : 'horizontal';
 }
 
-export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
+const FISH_BOWL_SERVICE_TURNS = 2;
+const FISH_BOWL_FRAME_COUNT = 4;
+
+function fishBowlFrameIndex(remaining) {
+  if (remaining == null || remaining >= FISH_BOWL_SERVICE_TURNS) return 0;
+  if (remaining >= 1) return 1;
+  return 3;
+}
+
+function fishBowlDisplayFrame(remaining) {
+  const frame = fishBowlFrameIndex(remaining);
+  return (FISH_BOWL_FRAME_COUNT - 1) - frame;
+}
+
+function fishBowlBackgroundPosition2x2(frameIndex) {
+  const col = frameIndex % 2;
+  const row = Math.floor(frameIndex / 2);
+  return `${col * 100}% ${row * 100}%`;
+}
+
+export function renderBoardStatic({ boardEl, facilities, facilityUsage = null, onTileClick }) {
   boardEl.innerHTML = '';
   boardEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
   boardEl.style.gridTemplateRows = `repeat(${GRID_SIZE}, 1fr)`;
@@ -176,15 +203,27 @@ export function renderBoardStatic({ boardEl, facilities, onTileClick }) {
       const facility = facilities.find((f) => f.pos.x === x && f.pos.y === y);
       if (facility) {
         tile.classList.add('has-facility', `facility-${facility.type}`);
-        const icon = document.createElement('img');
-        icon.className = 'facility-icon';
-        icon.src = assetUrl(`sprites/facilities/${facilityIconName(facility.type)}.svg`);
-        icon.alt = facility.type;
-        if (facility.type === 'tunnel') {
-          icon.classList.add(`facility-tunnel-${tunnelOrientationOf(facility)}`);
-          icon.alt = `tunnel-${tunnelOrientationOf(facility)}`;
+        if (facility.type === 'fish') {
+          const usage = facilityUsage?.get(facility.id);
+          const displayFrame = fishBowlDisplayFrame(usage?.remaining);
+          const icon = document.createElement('span');
+          icon.className = 'facility-icon facility-icon-fish-bowl';
+          icon.style.backgroundImage = `url(${assetUrl('sprites/facilities/fish-bowl-sheet.png')})`;
+          icon.style.backgroundPosition = fishBowlBackgroundPosition2x2(displayFrame);
+          icon.setAttribute('aria-label', facility.type);
+          tile.dataset.facilityId = facility.id;
+          tile.append(icon);
+        } else {
+          const icon = document.createElement('img');
+          icon.className = 'facility-icon';
+          icon.src = assetUrl(`sprites/facilities/${facilityIconName(facility.type)}.svg`);
+          icon.alt = facility.type;
+          if (facility.type === 'tunnel') {
+            icon.classList.add(`facility-tunnel-${tunnelOrientationOf(facility)}`);
+            icon.alt = `tunnel-${tunnelOrientationOf(facility)}`;
+          }
+          tile.append(icon);
         }
-        tile.append(icon);
 
         if (facility.type === 'laser') {
           const arrow = document.createElement('img');
@@ -404,6 +443,17 @@ export function renderCats({ catLayerEl, sim, animated = true }) {
   for (const stale of existing.values()) stale.remove();
   renderFootprints(catLayerEl, sim);
   renderScorePopups(catLayerEl, sim);
+}
+
+export function updateFishBowlFrames(boardEl, facilityUsage) {
+  if (!boardEl || !facilityUsage) return;
+  for (const tile of boardEl.querySelectorAll('.tile[data-facility-id]')) {
+    const icon = tile.querySelector('.facility-icon-fish-bowl');
+    if (!icon) continue;
+    const usage = facilityUsage.get(tile.dataset.facilityId);
+    const displayFrame = fishBowlDisplayFrame(usage?.remaining);
+    icon.style.backgroundPosition = fishBowlBackgroundPosition2x2(displayFrame);
+  }
 }
 
 export function updateHud({ turnEl, turnProgressEl, scoreEl, catCountEl, statusEl, sim, status }) {

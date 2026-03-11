@@ -111,3 +111,70 @@ Call `generate_image` with `prompt` describing the desired image (e.g. style, su
 - **IMAGE-ASSET-SPEC.md**: Pixel dimensions (64×64 or multiples), file format (PNG preferred), and sprite-sheet layout and splitting for animation.
 - ComfyUI MCP Server (this project): typically installed at `C:\Users\<user>\OneDrive\Documents\Project\comfyui-mcp-server`; run via `scripts/run-comfyui-mcp.ps1` or `scripts/run-comfyui-mcp.bat` in this repo.
 - Upstream: [joenorton/comfyui-mcp-server](https://github.com/joenorton/comfyui-mcp-server) for full tool list, parameters, and publish/config details.
+
+---
+
+## 8. End-to-end workflow: MCP generation to in-game use
+
+This section documents a repeatable workflow from generating a sprite sheet via MCP to using it in the game, including **pixel/layout handling** and **black-background-as-transparent** in the UI. Use it as a template for similar assets (e.g. multi-state facility icons).
+
+### 8.1 MCP options
+
+- **ComfyUI** (this guide §§ 1–6): Local, prompt-based image generation; good for custom dimensions and styles. Use `generate_image` with width/height (e.g. 64×64 multiples).
+- **AutoSprite** (optional): Cloud MCP at `https://www.autosprite.io/api/mcp`; good for prop/character sprites and animation strips. Configure in `.cursor/mcp.json` with `type: "http"`, `url`, and `Authorization: Bearer <API_KEY>`. Server name in Cursor may be e.g. `project-0-CatCity-autosprite`.
+
+### 8.2 Example: Fish-bowl sprite (AutoSprite)
+
+1. **Check credits**: `get_account` (no args).
+2. **Preview asset**: `generate_asset_preview` with `category: "prop"`, `description` (e.g. round blue glass fish bowl, water, orange fish), `style: "flat"`. Returns 4 image URLs (costs 1 credit).
+3. **Create asset**: `create_asset` with `name`, `imageUrl` (one of the preview URLs), optional `description`. Free.
+4. **Animate for states**: `animate_asset` with `assetId`, `animationPrompt` (e.g. “Four states: empty bowl, then few fish, then half full, then full of fish. 2D flat.”, max 200 chars), optional `isLooping: false`, `quality: "standard"`. Returns `jobId` (costs 5 credits).
+5. **Poll job**: `get_asset_job_status` with `jobId`. Wait at least 30 s before first check, then 30 s between checks. When `status === "succeeded"`, you get `videoUrl`, `spritesheetUrl`, `atlasUrl`.
+6. **Custom spritesheet**: `generate_asset_spritesheet` with `assetId`, `frameSize` (e.g. 128), `maxFrames` (e.g. 4), `removeBg` (e.g. `"default"`). Free; returns a new `jobId`. Poll with `get_asset_job_status` again until done, then use the returned `spritesheetUrl`.
+7. **Download**: Save the image from `spritesheetUrl` into the project (e.g. `public/assets/sprites/facilities/<name>-sheet.png`).
+
+### 8.3 Pixel and layout: 2×2 vs 1×4
+
+- **AutoSprite behaviour**: For 4 frames, the API often returns a **2×2 grid** (two rows, two columns), not a 1×4 horizontal strip. The game must interpret the sheet as 2×2.
+- **Frame index → cell**: Row-major order: frame 0 = top-left, 1 = top-right, 2 = bottom-left, 3 = bottom-right. So:
+  - `col = frameIndex % 2`
+  - `row = Math.floor(frameIndex / 2)`
+- **Optional post-processing**: If you need a 1×4 strip (e.g. 512×128), use a script to re-layout: load the 2×2 image, extract four tiles (e.g. (0,0), (1,0), (0,1), (1,1)), composite them in a single row, then save. The in-game code can still treat either 2×2 or 1×4; the important part is consistent `background-size` and `background-position` (see § 8.5).
+
+### 8.4 Black background and “transparent” in-game
+
+- **Why black**: Some MCP outputs (or post-processing) use a solid black background. To avoid a visible black rectangle in the UI, treat black as transparent in the game.
+- **Option A – Replace black with alpha (offline)**: In a build step or script, open the PNG and set alpha to 0 where RGB is (0,0,0) (or near-black). Save as PNG with transparency. No special CSS needed.
+- **Option B – Blend in-game (recommended for black sheets)**: Keep the black-background PNG and use **`mix-blend-mode: lighten`** on the icon element. With lighten, black (0,0,0) does not add light, so the underlying tile/background shows through; non-black pixels (the sprite) remain visible. No asset change required.
+- **CSS**: e.g. `.facility-icon-fish-bowl { mix-blend-mode: lighten; }` (plus the sprite background styles below).
+
+### 8.5 Using the sprite sheet in the game
+
+- **Element**: Use a `<span>` (or `<div>`) with `background-image` pointing to the sheet PNG, not an `<img>` with `src`, so you can control which frame is visible via `background-position`.
+- **2×2 layout** (one frame = one quadrant):
+  - `background-size: 200% 200%` so the full image is 2× the element in each axis; one quadrant fills the element.
+  - `background-position: <x> <y>` where `x = (frameIndex % 2) * 100%`, `y = Math.floor(frameIndex / 2) * 100%`:
+    - Frame 0: `0% 0%`
+    - Frame 1: `100% 0%`
+    - Frame 2: `0% 100%`
+    - Frame 3: `100% 100%`
+- **Helper in code** (e.g. `src/ui.js`):
+  ```js
+  function fishBowlBackgroundPosition2x2(frameIndex) {
+    const col = frameIndex % 2;
+    const row = Math.floor(frameIndex / 2);
+    return `${col * 100}% ${row * 100}%`;
+  }
+  ```
+- **Toolbar**: For the tool button, use the same class and sheet; default `background-position: 0 0` shows frame 0.
+- **Board**: For each facility instance, set `background-position` from the current state (e.g. `facilityUsage.remaining`). Store `dataset.facilityId` on the tile so you can update by id.
+- **Per-tick updates**: When the simulation ticks, update only the fish-bowl icons (not the whole board): e.g. `updateFishBowlFrames(boardEl, facilityUsage)` that loops over `boardEl.querySelectorAll('.tile[data-facility-id]')`, reads `facilityUsage.get(tile.dataset.facilityId)`, maps `remaining` to `frameIndex`, and sets `icon.style.backgroundPosition = fishBowlBackgroundPosition2x2(frameIndex)`. Call this from the same place that runs `renderCats` / HUD updates (e.g. `rerenderDynamic` in the game controller).
+
+### 8.6 Checklist for a new multi-frame asset
+
+1. Generate (ComfyUI or AutoSprite) and download the sprite image.
+2. Note the **layout** (2×2, 1×4, etc.) and **frame count**.
+3. If background is black and you want it transparent in-game, either flatten to alpha in a script or use **`mix-blend-mode: lighten`** on the icon element.
+4. In CSS: `background-size` and default `background-position` so one frame fills the element (e.g. 200% 200% for 2×2).
+5. In JS: map game state → `frameIndex`, set `background-position` using the same formula (e.g. 2×2: `col = frameIndex % 2`, `row = Math.floor(frameIndex / 2)`).
+6. For state that changes every tick, add an `update*Frames`-style function and call it from the dynamic render path so the icon updates without re-rendering the whole board.

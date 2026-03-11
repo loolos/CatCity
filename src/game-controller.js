@@ -10,6 +10,7 @@ import {
   renderCats,
   renderEntryExitMarkers,
   renderTools,
+  updateFishBowlFrames,
   updateFlowInfo,
   updateHud,
 } from './ui.js';
@@ -116,6 +117,7 @@ export class GameController {
     renderBoardStatic({
       boardEl: this.dom.boardEl,
       facilities: this.state.facilities,
+      facilityUsage: this.state.sim?.facilityUsage ?? null,
       onTileClick: (x, y) => this.onTileClick(x, y),
     });
 
@@ -124,6 +126,7 @@ export class GameController {
   }
 
   rerenderDynamic(animated = true) {
+    updateFishBowlFrames(this.dom.boardEl, this.state.sim?.facilityUsage ?? null);
     renderCats({ catLayerEl: this.dom.catLayerEl, sim: this.state.sim, animated });
     const flowView = this.state.sim ?? this.state.plannedFlow;
 

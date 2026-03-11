@@ -1,8 +1,11 @@
 {
   "mcpServers": {
-    "comfyui": {
-      "type": "streamable-http",
-      "url": "http://127.0.0.1:9000/mcp"
+    "autosprite": {
+      "type": "http",
+      "url": "https://www.autosprite.io/api/mcp",
+      "headers": {
+        "Authorization": "Bearer vspk_6471484577_NL_teJph8AVAlFHEW320RKLOWmR9grFizDTRko3L"
+      }
     }
   }
 }
