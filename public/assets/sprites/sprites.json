@@ -1,0 +1,18 @@
+{
+  "$schema": "./sprites.schema.json",
+  "description": "Sprite sheet manifest: path, frame count, layout, and pixel dimensions for frontend use.",
+  "sprites": {
+    "fish-bowl-sheet": {
+      "path": "sprites/facilities/fish-bowl-sheet.png",
+      "frameCount": 4,
+      "cols": 2,
+      "rows": 2,
+      "layout": "2x2",
+      "sheetWidth": 256,
+      "sheetHeight": 256,
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "notes": "States: empty to full. Row-major: 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right."
+    }
+  }
+}

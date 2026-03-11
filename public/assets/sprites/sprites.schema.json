@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sprite manifest",
+  "description": "Metadata for PNG sprite sheets: frame count, layout, dimensions.",
+  "type": "object",
+  "properties": {
+    "description": { "type": "string" },
+    "sprites": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path", "frameCount", "cols", "rows", "sheetWidth", "sheetHeight", "frameWidth", "frameHeight"],
+        "properties": {
+          "path": { "type": "string", "description": "Relative to public/assets/" },
+          "frameCount": { "type": "integer", "minimum": 1 },
+          "cols": { "type": "integer", "minimum": 1 },
+          "rows": { "type": "integer", "minimum": 1 },
+          "layout": { "type": "string", "pattern": "^[0-9]+x[0-9]+$" },
+          "sheetWidth": { "type": "integer", "minimum": 1 },
+          "sheetHeight": { "type": "integer", "minimum": 1 },
+          "frameWidth": { "type": "integer", "minimum": 1 },
+          "frameHeight": { "type": "integer", "minimum": 1 },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

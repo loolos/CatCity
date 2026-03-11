@@ -1,4 +1,5 @@
 import { CAT_FOOTPRINT_TURNS, GRID_SIZE, GAME_TURNS, MAX_FACILITY_COUNTS, NEED_THRESHOLD, SATISFIED_EMOJI_TURNS } from './config.js';
+import { getSpriteMeta, applySpriteFrame, FISH_BOWL_SPRITE_ID } from './data/sprites.js';
 
 const ASSET_BASE_URL = new URL('../public/assets/', import.meta.url);
 
@@ -62,8 +63,9 @@ export function renderTools({
     } else if (tool.id === 'fish') {
       const icon = document.createElement('span');
       icon.className = 'tool-btn-icon facility-icon-fish-bowl';
-      icon.style.backgroundImage = `url(${assetUrl('sprites/facilities/fish-bowl-sheet.png')})`;
-      icon.style.backgroundPosition = fishBowlBackgroundPosition2x2(FISH_BOWL_FRAME_COUNT - 1);
+      const meta = getSpriteMeta(FISH_BOWL_SPRITE_ID);
+      const lastFrame = meta ? meta.frameCount - 1 : 0;
+      applySpriteFrame(icon, FISH_BOWL_SPRITE_ID, lastFrame, assetUrl);
       icon.setAttribute('aria-hidden', 'true');
       iconWrap.append(icon);
     } else {
@@ -160,7 +162,6 @@ function tunnelOrientationOf(facility) {
 }
 
 const FISH_BOWL_SERVICE_TURNS = 2;
-const FISH_BOWL_FRAME_COUNT = 4;
 
 function fishBowlFrameIndex(remaining) {
   if (remaining == null || remaining >= FISH_BOWL_SERVICE_TURNS) return 0;
@@ -169,14 +170,10 @@ function fishBowlFrameIndex(remaining) {
 }
 
 function fishBowlDisplayFrame(remaining) {
+  const meta = getSpriteMeta(FISH_BOWL_SPRITE_ID);
+  const frameCount = meta?.frameCount ?? 4;
   const frame = fishBowlFrameIndex(remaining);
-  return (FISH_BOWL_FRAME_COUNT - 1) - frame;
-}
-
-function fishBowlBackgroundPosition2x2(frameIndex) {
-  const col = frameIndex % 2;
-  const row = Math.floor(frameIndex / 2);
-  return `${col * 100}% ${row * 100}%`;
+  return (frameCount - 1) - frame;
 }
 
 export function renderBoardStatic({ boardEl, facilities, facilityUsage = null, onTileClick }) {
@@ -208,8 +205,7 @@ export function renderBoardStatic({ boardEl, facilities, facilityUsage = null, o
           const displayFrame = fishBowlDisplayFrame(usage?.remaining);
           const icon = document.createElement('span');
           icon.className = 'facility-icon facility-icon-fish-bowl';
-          icon.style.backgroundImage = `url(${assetUrl('sprites/facilities/fish-bowl-sheet.png')})`;
-          icon.style.backgroundPosition = fishBowlBackgroundPosition2x2(displayFrame);
+          applySpriteFrame(icon, FISH_BOWL_SPRITE_ID, displayFrame, assetUrl);
           icon.setAttribute('aria-label', facility.type);
           tile.dataset.facilityId = facility.id;
           tile.append(icon);
@@ -452,7 +448,7 @@ export function updateFishBowlFrames(boardEl, facilityUsage) {
     if (!icon) continue;
     const usage = facilityUsage.get(tile.dataset.facilityId);
     const displayFrame = fishBowlDisplayFrame(usage?.remaining);
-    icon.style.backgroundPosition = fishBowlBackgroundPosition2x2(displayFrame);
+    applySpriteFrame(icon, FISH_BOWL_SPRITE_ID, displayFrame, assetUrl);
   }
 }
 

@@ -29,7 +29,7 @@ This document defines **pixel dimensions**, **file formats**, and **sprite-sheet
 
 - 4 frames, 2×2 (AutoSprite default): **256×256** (2×128 × 2×128) or **128×128** (2×64 × 2×64).
 - 4 frames, 1×4 (if re-laid out by script): **512×128** (4×128 × 128) or **256×64** (4×64 × 64).
-- Other layouts (ComfyUI or custom): same multiple-of-64 rule; see layout table below.
+- Other layouts (custom or re-laid from 2×2): same multiple-of-64 rule; see layout table below.
 
 ---
 
@@ -106,7 +106,7 @@ function spriteBackgroundPosition2x2(frameIndex) {
 
 - **From AutoSprite:** Request 4 frames; expect **2×2** output. Do not assume 1×4.
 - **Frame size:** e.g. “each frame 128×128” or “64×64 per cell”.
-- **Layout:** For AutoSprite, “4 frames” → 2×2. For ComfyUI, you can request “4 frames in one row” (1×4) or “2×2 grid” explicitly.
+- **Layout:** For AutoSprite, “4 frames” → 2×2. If you re-layout to 1×4 via script, request “2×2 grid” from the source and convert offline.
 - **Style:** “no gaps between frames”, “PNG”, “transparent or black background” (black can be made transparent in-game with `mix-blend-mode: lighten`).
 
 ---
@@ -119,4 +119,15 @@ function spriteBackgroundPosition2x2(frameIndex) {
 - [ ] **Splitting:** Row-major; frame `i` → column `i % cols`, row `floor(i / cols)`.
 - [ ] **Naming:** Lowercase, hyphenated; store under `public/assets/sprites/` or `assets/` as appropriate.
 
-For MCP-based generation (ComfyUI and AutoSprite) and in-game usage (black-as-transparent, 2×2 display), see **MCP-IMAGE-GENERATION-AGENT-GUIDE.md**.
+For MCP-based generation (AutoSprite) and in-game usage (black-as-transparent, 2×2 display), see **MCP-IMAGE-GENERATION-AGENT-GUIDE.md**.
+
+---
+
+## 5. Sprite manifest (management system)
+
+PNG sprite sheets are registered in a **manifest** so the frontend can use them in one place.
+
+- **Data:** `src/data/sprites.js` exports `SPRITE_MANIFEST` and helpers. A mirror JSON is at `public/assets/sprites/sprites.json` (optional, for tooling).
+- **Per-sprite fields:** `path` (relative to `public/assets/`), `frameCount`, `cols`, `rows`, `layout` (e.g. `"2x2"`), `sheetWidth`, `sheetHeight`, `frameWidth`, `frameHeight`, optional `notes`.
+- **Frontend API:** `getSpriteMeta(id)`, `getSpritePath(id)`, `getBackgroundSizeCSS(id)`, `getBackgroundPositionForFrame(id, frameIndex)`. Use these when rendering sprite icons so layout and dimensions stay consistent.
+- **Adding a sprite:** Add an entry to `SPRITE_MANIFEST` in `src/data/sprites.js` (and optionally to `sprites.json`) with the correct frame count and pixel dimensions; then use the sprite id and helpers in the UI.
