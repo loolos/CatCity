@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../src/rng.js';
 import { GRID_SIZE, POINTS } from '../src/config.js';
-import { planEntryExit, Simulation } from '../src/simulation.js';
+import { shortestPath } from '../src/pathfinding.js';
+import { planEntryExit, planMapLayout, Simulation } from '../src/simulation.js';
 
 test('deterministic seed yields deterministic score', () => {
   const baseFacilities = [
@@ -44,6 +45,19 @@ test('entry and exit fixed coordinates keep a minimum gap on opposite edges', ()
     const plan = planEntryExit(createRng(`seed-gap-${i}`));
     const gap = Math.abs(plan.spawnPoint.pos.x - plan.exitPoint.pos.x) + Math.abs(plan.spawnPoint.pos.y - plan.exitPoint.pos.y);
     assert.ok(gap >= Math.floor(GRID_SIZE / 2));
+  }
+});
+
+test('planned obstacles never occupy entry or exit and keep a walkable path', () => {
+  for (let i = 0; i < 30; i += 1) {
+    const plan = planMapLayout(createRng(`seed-obstacles-${i}`));
+    const obstacleSet = new Set(plan.obstacles.map((o) => `${o.x},${o.y}`));
+
+    assert.equal(obstacleSet.has(`${plan.spawnPoint.pos.x},${plan.spawnPoint.pos.y}`), false);
+    assert.equal(obstacleSet.has(`${plan.exitPoint.pos.x},${plan.exitPoint.pos.y}`), false);
+
+    const path = shortestPath(plan.spawnPoint.pos, plan.exitPoint.pos, GRID_SIZE, (_from, to) => !obstacleSet.has(`${to.x},${to.y}`));
+    assert.ok(path?.length);
   }
 });
 
@@ -92,14 +106,14 @@ test('spawn and exit points are fixed within one simulation', () => {
   assert.deepEqual(sim.exitPoint.pos, firstExit);
 });
 
-test('cats cannot move onto spawn tile unless they are newly spawned there', () => {
+test('cat returning to spawn tile blocks future spawns', () => {
   const sim = new Simulation({ facilities: [], tunnelPairs: [], rng: () => 0 });
   sim.spawnPoint = { pos: { x: 0, y: 0 }, prevPos: { x: -1, y: 0 }, edge: 'left' };
 
   const cat = {
     id: 1,
-    pos: { x: 1, y: 0 },
-    prevPos: { x: 1, y: 0 },
+    pos: { x: 0, y: 1 },
+    prevPos: { x: 0, y: 1 },
     facing: 'left',
     spawnEdge: 'left',
     hunger: 0,
@@ -111,10 +125,18 @@ test('cats cannot move onto spawn tile unless they are newly spawned there', () 
     lastSatisfiedTurn: -999,
     satisfiedCount: 0,
     exiting: false,
+    hasLeftSpawn: true,
   };
+  sim.cats = [cat];
 
-  const moved = sim.resolveMoveTarget(cat, { x: 0, y: 0 }, new Set());
-  assert.deepEqual(moved, { x: 1, y: 0 });
+  sim.moveCat(cat, new Set());
+
+  assert.deepEqual(cat.pos, { x: 0, y: 0 });
+  assert.equal(sim.spawnBlocked, true);
+
+  sim.spawnedCats = 0;
+  sim.spawnCat();
+  assert.equal(sim.cats.length, 1);
 });
 
 test('any cat disappears when reaching exit and poor condition applies penalty', () => {

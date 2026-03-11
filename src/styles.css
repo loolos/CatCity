@@ -411,6 +411,11 @@ input:focus-visible {
   box-shadow: inset 0 0 0 1px rgb(145 180 236 / 24%);
 }
 
+.tile.has-obstacle {
+  border-color: #7f8aa0;
+  background: linear-gradient(180deg, rgb(53 59 72 / 95%), rgb(44 49 61 / 95%));
+}
+
 
 .laser-target-dot {
   position: absolute;
@@ -428,6 +433,12 @@ input:focus-visible {
   width: 72%;
   height: 72%;
   filter: drop-shadow(0 3px 4px rgb(0 0 0 / 30%));
+}
+
+.obstacle-icon {
+  width: 68%;
+  height: 68%;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 45%));
 }
 
 .facility-icon-fish-bowl,

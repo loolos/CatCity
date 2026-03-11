@@ -172,12 +172,13 @@ function fishBowlDisplayFrame(remaining) {
   return (frameCount - 1) - frame;
 }
 
-export function renderBoardStatic({ boardEl, facilities, facilityUsage = null, onTileClick }) {
+export function renderBoardStatic({ boardEl, facilities, obstacles = [], facilityUsage = null, onTileClick }) {
   boardEl.innerHTML = '';
   boardEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
   boardEl.style.gridTemplateRows = `repeat(${GRID_SIZE}, 1fr)`;
 
   const laserTargetTiles = new Set();
+  const obstacleSet = new Set(obstacles.map((o) => `${o.x},${o.y}`));
   for (const facility of facilities) {
     if (facility.type !== 'laser') continue;
     const target = laserTargetForFacility(facility);
@@ -193,7 +194,16 @@ export function renderBoardStatic({ boardEl, facilities, facilityUsage = null, o
       tile.dataset.y = String(y);
       tile.addEventListener('click', () => onTileClick(x, y));
 
-      const facility = facilities.find((f) => f.pos.x === x && f.pos.y === y);
+      if (obstacleSet.has(`${x},${y}`)) {
+        tile.classList.add('has-obstacle');
+        const rock = document.createElement('img');
+        rock.className = 'facility-icon obstacle-icon';
+        rock.src = assetUrl('sprites/facilities/rock.svg');
+        rock.alt = 'rock obstacle';
+        tile.append(rock);
+      }
+
+      const facility = obstacleSet.has(`${x},${y}`) ? null : facilities.find((f) => f.pos.x === x && f.pos.y === y);
       if (facility) {
         tile.classList.add('has-facility', `facility-${facility.type}`);
         if (facility.type === 'fish') {

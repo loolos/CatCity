@@ -1,9 +1,14 @@
 export const GRID_SIZE = 5;
 export const MAX_FACILITY_COUNTS = {
-  fish: 4,
-  bed: 4,
+  fish: 2,
+  bed: 2,
   laser: 5,
   tunnel: 4,
+};
+
+export const OBSTACLE_COUNT_RANGE = {
+  min: 2,
+  max: 6,
 };
 
 export const NEED_THRESHOLD = 70;
