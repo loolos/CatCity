@@ -1,6 +1,6 @@
 # Image Asset Specification
 
-This document defines the standard **pixel dimensions**, **file formats**, and **sprite-sheet layout** for all image assets in this project. Agents and generators must follow these rules so assets are consistent and easy to use in code.
+This document defines **pixel dimensions**, **file formats**, and **sprite-sheet layout** for image assets in this project. It reflects the fact that **AutoSprite MCP** (used for prop/asset sprites) outputs **2×2 grids** for 4-frame sheets rather than 1×4 strips. All generators and in-game code should follow these rules for consistency.
 
 ---
 
@@ -15,107 +15,108 @@ This document defines the standard **pixel dimensions**, **file formats**, and *
 | Icon / small    | 64 × 64        | Default single-tile size |
 | Medium          | 128 × 128      | 2× scale                 |
 | Large           | 192 × 192      | 3× scale                 |
-| Banner / wide   | 256 × 128, 320 × 64, etc. | Width and height each a multiple of 64 |
+| Banner / wide   | 256 × 128, 320 × 64, etc. | Each axis a multiple of 64 |
 
-**Rule:** Both width and height must be divisible by 64. Examples: 64, 128, 192, 256, 320, 384, 512.
+**Rule:** Both width and height must be divisible by 64.
 
-### 1.2 Sprite sheets (animation frames)
+### 1.2 Sprite sheets (animation / state frames)
 
-Each **frame** in a sprite sheet must be **64×64 or a multiple of 64** (e.g. 64×64, 128×64, 128×128).
+- Each **frame** must be **64×64 or a multiple of 64** (e.g. 64×64, 128×128).
+- **Frame width** = sheet width ÷ columns → multiple of 64.
+- **Frame height** = sheet height ÷ rows → multiple of 64.
 
-- **Frame width** = sheet width ÷ number of columns → must be a multiple of 64.
-- **Frame height** = sheet height ÷ number of rows → must be a multiple of 64.
+**AutoSprite MCP behaviour:** For 4 frames, the API returns a **2×2 grid** (not 1×4). The game and this spec treat 4-frame sheets as **2×2** by default.
 
-So the **total sheet size** is always a multiple of 64 in both axes. Examples:
-
-- 4 frames in one row: **256×64** (4×64 × 64).
-- 8 frames in one row: **512×64** (8×64 × 64).
-- 4 frames in 2×2: **128×128** (2×64 × 2×64).
-- 8 frames in 4×2: **256×128** (4×64 × 2×64).
+- 4 frames, 2×2 (AutoSprite default): **256×256** (2×128 × 2×128) or **128×128** (2×64 × 2×64).
+- 4 frames, 1×4 (if re-laid out by script): **512×128** (4×128 × 128) or **256×64** (4×64 × 64).
+- Other layouts (ComfyUI or custom): same multiple-of-64 rule; see layout table below.
 
 ---
 
 ## 2. File Format
 
-- **Preferred:** **PNG** for assets that need transparency or sharp edges (sprites, UI, icons).
-- **Allowed:** **WebP** for smaller size when transparency is not required; **JPEG** only when transparency is not needed and file size is a concern.
-- **Naming:** Lowercase, hyphenated; extension matches format (e.g. `cat-walk.png`, `hero-banner.webp`).
+- **Preferred:** **PNG** for sprites, UI, icons (transparency or sharp edges).
+- **Allowed:** **WebP** when transparency not required; **JPEG** only when no transparency and size matters.
+- **Naming:** Lowercase, hyphenated; extension matches format (e.g. `fish-bowl-sheet.png`).
 
 ---
 
-## 3. Sprite Sheets: Layout and Splitting for Animation
+## 3. Sprite Sheets: Layout and Splitting
 
-### 3.1 Layout rule
+### 3.1 Layout rule (row-major)
 
-- Frames are arranged in a **grid**: **columns × rows**.
+- Frames are in a **grid: columns × rows**.
 - **Row-major order:** left to right, then next row. Frame index `i` (0-based):
   - **column** = `i % cols`
   - **row** = `floor(i / cols)`
 
-### 3.2 How to split (math)
+### 3.2 4-frame sheets: 2×2 (AutoSprite default)
 
-For a sprite sheet of total size `sheetWidth × sheetHeight` with `cols` columns and `rows` rows:
+When using **AutoSprite MCP**, a 4-frame spritesheet is delivered as **2×2**, not 1×4. Use this layout in code and in this spec.
 
-- **Frame width:** `frameW = sheetWidth / cols`  (must be ≥ 64 and multiple of 64)
-- **Frame height:** `frameH = sheetHeight / rows` (must be ≥ 64 and multiple of 64)
+| Frame index | Column | Row  | Position in sheet |
+|-------------|--------|------|--------------------|
+| 0           | 0      | 0    | Top-left           |
+| 1           | 1      | 0    | Top-right          |
+| 2           | 0      | 1    | Bottom-left        |
+| 3           | 1      | 1    | Bottom-right       |
 
-**Frame index `i` → crop position (top-left of frame):**
+- **col** = `frameIndex % 2`
+- **row** = `Math.floor(frameIndex / 2)`
 
-- **X:** `(i % cols) * frameW`
-- **Y:** `floor(i / cols) * frameH`
+**Frame index `i` → crop position (top-left):**
 
-So for frame index `i`, the region is:
+- **X:** `(i % 2) * frameW`
+- **Y:** `Math.floor(i / 2) * frameH`
 
-- X from `(i % cols) * frameW` to `(i % cols) * frameW + frameW - 1`
-- Y from `floor(i / cols) * frameH` to `floor(i / cols) * frameH + frameH - 1`
+**Sheet size examples (2×2):** 128×128 (64×64 per frame), 256×256 (128×128 per frame).
 
-### 3.3 Common layouts (all 64 or multiple of 64 per frame)
+### 3.3 Common layouts (all multiples of 64 per frame)
 
-| Frames | Layout (cols × rows) | Sheet size (W×H) | Frame size |
-|--------|----------------------|------------------|------------|
-| 2      | 2×1                  | 128×64           | 64×64      |
-| 4      | 4×1                  | 256×64           | 64×64      |
-| 4      | 2×2                  | 128×128          | 64×64      |
-| 6      | 6×1                  | 384×64           | 64×64      |
-| 8      | 8×1                  | 512×64           | 64×64      |
-| 8      | 4×2                  | 256×128          | 64×64      |
-| 8      | 2×4                  | 128×256          | 64×64      |
+| Frames | Layout (cols×rows) | Sheet size (W×H) | Frame size | Notes                    |
+|--------|--------------------|------------------|------------|--------------------------|
+| 4      | **2×2**            | 128×128 or 256×256 | 64×64 or 128×128 | **AutoSprite default**   |
+| 2      | 2×1                | 128×64           | 64×64      |                          |
+| 4      | 4×1                | 256×64           | 64×64      | Requires re-layout from 2×2 if from AutoSprite |
+| 6      | 6×1 or 3×2         | 384×64, 192×128 | 64×64      |                          |
+| 8      | 4×2 or 8×1         | 256×128, 512×64 | 64×64      |                          |
 
-For larger characters (e.g. 128×128 per frame):
+### 3.4 Using 2×2 in code (CSS)
 
-| Frames | Layout | Sheet size (W×H) | Frame size |
-|--------|--------|------------------|------------|
-| 4      | 4×1    | 512×128          | 128×128    |
-| 8      | 4×2    | 512×256          | 128×128    |
+For a **2×2** sheet, one frame fills the element when:
 
-### 3.4 Using in code (CSS / canvas)
+- **background-size:** `200% 200%` (full image is 2× element width and height; one quadrant = one frame).
+- **background-position:** `x% y%` where:
+  - `x = (frameIndex % 2) * 100`
+  - `y = Math.floor(frameIndex / 2) * 100`
 
-- **CSS background:** One div per sprite; `background-size` = full sheet size; `background-position` for frame `i`:
-  - `x = -(i % cols) * frameW` (px)
-  - `y = -floor(i / cols) * frameH` (px)
-- **Animation:** Advance `i` over time (e.g. `i = (i + 1) % totalFrames`), update `background-position` each frame. Use `steps(totalFrames)` or equivalent so there is no interpolation between frames.
+So: frame 0 → `0% 0%`, frame 1 → `100% 0%`, frame 2 → `0% 100%`, frame 3 → `100% 100%`.
 
-### 3.5 What to request when generating sprite sheets
+**Helper (e.g. in `src/ui.js`):**
 
-When asking the MCP or any generator for a sprite sheet, specify in the prompt:
+```js
+function spriteBackgroundPosition2x2(frameIndex) {
+  const col = frameIndex % 2;
+  const row = Math.floor(frameIndex / 2);
+  return `${col * 100}% ${row * 100}%`;
+}
+```
 
-- **Frame size:** e.g. “each frame 64×64 pixels” or “128×128 per frame”.
-- **Layout:** e.g. “4 frames in a single row”, “4×2 grid (4 columns, 2 rows)”.
-- **Total size:** e.g. “total image 256×64” (4×64×64) or “256×128” (4×2, 64×64 per frame).
-- **Style:** e.g. “pixel art”, “no gaps between frames”, “transparent background” (PNG).
+### 3.5 What to request when generating
 
-This keeps generated sheets consistent with this spec and with the project’s animation code.
+- **From AutoSprite:** Request 4 frames; expect **2×2** output. Do not assume 1×4.
+- **Frame size:** e.g. “each frame 128×128” or “64×64 per cell”.
+- **Layout:** For AutoSprite, “4 frames” → 2×2. For ComfyUI, you can request “4 frames in one row” (1×4) or “2×2 grid” explicitly.
+- **Style:** “no gaps between frames”, “PNG”, “transparent or black background” (black can be made transparent in-game with `mix-blend-mode: lighten`).
 
 ---
 
 ## 4. Summary Checklist for Agents
 
-When generating or documenting image assets:
+- [ ] **Dimensions:** Width and height each **64 or a multiple of 64**.
+- [ ] **Format:** Prefer **PNG**.
+- [ ] **4-frame sheets from AutoSprite:** Treat as **2×2**; use `background-size: 200% 200%` and position `(col*100)% (row*100)%`.
+- [ ] **Splitting:** Row-major; frame `i` → column `i % cols`, row `floor(i / cols)`.
+- [ ] **Naming:** Lowercase, hyphenated; store under `public/assets/sprites/` or `assets/` as appropriate.
 
-- [ ] **Dimensions:** Width and height are each **64 or a multiple of 64**.
-- [ ] **Format:** Prefer **PNG**; use WebP/JPEG only when appropriate.
-- [ ] **Sprite sheets:** Frame size is 64×64 or multiple; layout (cols×rows) and total size match the table above (or the same multiple-of-64 rule).
-- [ ] **Splitting:** Use row-major order; frame `i` → `(i % cols) * frameW`, `floor(i / cols) * frameH`.
-- [ ] **Naming:** Lowercase, hyphenated; store under `assets/`.
-
-See **MCP-IMAGE-GENERATION-AGENT-GUIDE.md** for how to generate these assets via the ComfyUI MCP.
+For MCP-based generation (ComfyUI and AutoSprite) and in-game usage (black-as-transparent, 2×2 display), see **MCP-IMAGE-GENERATION-AGENT-GUIDE.md**.

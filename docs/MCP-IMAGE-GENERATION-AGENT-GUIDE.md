@@ -1,180 +1,191 @@
 # MCP Image Generation – Agent Guide
 
-This document describes how to generate image assets in this project using the ComfyUI MCP server. **Agents should read this before calling image-generation tools.**
+This guide covers **image and sprite generation** in this project via two MCP options: **ComfyUI** (local) and **AutoSprite** (cloud). **Agents should read this before calling image-generation tools.**
 
-**Image dimensions, format, and sprite-sheet layout** are defined in **IMAGE-ASSET-SPEC.md**. When generating images (single or sprite sheets), follow that spec: **64×64 or multiples of 64** for all dimensions, **PNG** preferred, and use the documented layout and splitting rules for animations.
+**Image dimensions, format, and sprite-sheet layout** are in **IMAGE-ASSET-SPEC.md**. AutoSprite outputs **2×2** grids for 4-frame sheets (not 1×4); the spec and this guide reflect that.
 
 ---
 
 ## 1. Overview
 
-- **MCP server**: `comfyui` (ComfyUI MCP Server).
-- **Purpose**: Generate images (and optionally audio/video) via tool calls. ComfyUI runs locally; the MCP server bridges the agent to it.
-- **Config**: Project MCP config is in `.cursor/mcp.json`. The server is connected via **streamable-http** at `http://127.0.0.1:9000/mcp`.
+| MCP        | Type   | Purpose                                      | Config / URL |
+|------------|--------|----------------------------------------------|--------------|
+| **ComfyUI** | Local  | Prompt-based image generation; custom size/style | `.cursor/mcp.json`; `streamable-http` at `http://127.0.0.1:9000/mcp` |
+| **AutoSprite** | Cloud | Prop/character sprites, animation strips; 4-frame → **2×2** | `.cursor/mcp.json`; `type: "http"`, `url: "https://www.autosprite.io/api/mcp"`, `Authorization: Bearer <API_KEY>` |
+
+In Cursor the AutoSprite server may appear as e.g. `project-0-CatCity-autosprite`. Reload MCP after changing config.
 
 ---
 
-## 2. Prerequisites (Human / Environment)
+## 2. Prerequisites
 
-Before an agent can successfully generate images:
+### 2.1 ComfyUI
 
 1. **ComfyUI** must be running locally (default port **8188**).
-2. **ComfyUI MCP Server** must be running (e.g. via `scripts/run-comfyui-mcp.ps1` or `scripts/run-comfyui-mcp.bat`). It listens at `http://127.0.0.1:9000/mcp`.
-3. ComfyUI must have at least one usable checkpoint model (e.g. under `models/checkpoints/` in the ComfyUI install).
+2. **ComfyUI MCP Server** must be running (e.g. `scripts/run-comfyui-mcp.ps1` or `run-comfyui-mcp.bat`). It listens at `http://127.0.0.1:9000/mcp`.
+3. At least one usable checkpoint model (e.g. under `models/checkpoints/` in the ComfyUI install).
 
-If the MCP server or ComfyUI is not running, image-generation tool calls will fail. The agent cannot start these processes; the user must have started them.
+If the server or ComfyUI is not running, tool calls will fail; the agent cannot start them.
 
----
+### 2.2 AutoSprite
 
-## 3. Main Tools for Image Generation
-
-Agents should use the following MCP tools when generating image assets.
-
-### 3.1 `generate_image`
-
-- **Use for**: Creating a new image from a text prompt.
-- **Required parameter**: `prompt` (string).
-- **Optional parameters** (examples): `width`, `height`, `steps`, `cfg`, `model`, etc. If not provided, server defaults apply.
-- **Returns**: Asset info including `asset_id`, which can be used for `regenerate`, `view_image`, or `publish_asset`.
-
-**Size and format (see IMAGE-ASSET-SPEC.md):**  
-- Request **width** and **height** as **64×64 or multiples of 64** (e.g. 64, 128, 256). Use `set_defaults` or pass explicit `width`/`height` so outputs match the project spec.  
-- Prefer **PNG** for sprites and anything needing transparency.
-
-**Example (conceptual):**  
-Call `generate_image` with `prompt` describing the desired image (e.g. style, subject, layout). Use clear, descriptive English prompts for best results.
-
-### 3.2 `view_image`
-
-- **Use for**: Viewing a generated image (e.g. to verify quality or describe it to the user).
-- **Required**: `asset_id` from a previous generation (or from `list_assets`).
-- **Note**: Only supports image assets (e.g. PNG, JPEG, WebP, GIF), not audio/video.
-
-### 3.3 `regenerate`
-
-- **Use for**: Creating a new image from an existing asset with optional parameter overrides (e.g. different prompt, steps, size).
-- **Required**: `asset_id` from a previous generation.
-- **Optional**: Override any generation parameters. Useful for iterative refinement without re-specifying everything.
-
-### 3.4 `list_assets`
-
-- **Use for**: Listing recently generated assets (e.g. to find `asset_id` for follow-up actions).
-- Helps the agent keep context when the user asks to “change that image” or “publish the last one”.
-
-### 3.5 `publish_asset`
-
-- **Use for**: Writing a generated asset into the project’s web-visible directory with optional filename and manifest.
-- **Typical use**: Save the final image into something like `assets/` or `public/` so the app or docs can reference it.
-- **Parameters**: Include `asset_id`; optionally `target_filename`, `manifest_key`, etc. See MCP server docs for exact schema.
-- **Note**: Asset IDs are session-scoped; after the MCP server restarts, previous `asset_id`s are invalid.
-
-### 3.6 Configuration and Discovery
-
-- **`list_models`**: List available ComfyUI models (useful to suggest or choose a model).
-- **`get_defaults`** / **`set_defaults`**: Get or set default generation parameters (size, steps, etc.) so agents can rely on consistent defaults.
-- **`get_job`** / **`get_queue_status`** / **`cancel_job`**: Check or cancel long-running jobs when needed.
+1. **API key** from [AutoSprite](https://www.autosprite.io) (sign-in required).
+2. **Config** in `.cursor/mcp.json` with `url` and `headers.Authorization: Bearer <API_KEY>`.
+3. **Reload MCP** (or restart Cursor) so the AutoSprite server appears. If it does not, check the key and that `https://www.autosprite.io/api/mcp` is reachable.
 
 ---
 
-## 4. Project Conventions for Image Assets
+## 3. ComfyUI Tools
 
-- **Storage**: Prefer saving final assets under the project’s **`assets/`** directory (e.g. `assets/<name>.png`). Use `publish_asset` when the MCP server supports it and the project has a configured publish path; otherwise the agent may need to direct the user to save from ComfyUI output or document where the file was written.
-- **Naming**: Use clear, lowercase, hyphenated names (e.g. `cat-walk-spritesheet.png`, `hero-banner.png`).
-- **Dimensions and format**: All images must be **64×64 or multiples of 64** in width and height, and **PNG** is preferred. See **IMAGE-ASSET-SPEC.md** for the full spec.
-- **Sprite sheets**: If the user asks for a sprite sheet (e.g. character animation frames):
-  - Generate at a **total size that matches the spec**: each frame **64×64 or a multiple** (e.g. 4 frames in one row → 256×64; 4×2 grid → 256×128). Specify in the prompt: “each frame 64×64 pixels”, “4 frames in a single row”, “total image 256×64”, “no gaps between frames”, “PNG”.
-  - Save to `assets/` and, if applicable, provide or update a demo HTML that **splits the sheet by the same rule**: row-major order, frame index `i` → column `i % cols`, row `floor(i / cols)`, with frame size = sheet width÷cols × sheet height÷rows. See **IMAGE-ASSET-SPEC.md** for layout tables and splitting math.
+Use these when the ComfyUI MCP server is available.
 
----
+| Tool | Use |
+|------|-----|
+| `generate_image` | Create an image from a prompt. Params: `prompt` (required), `width`, `height`, etc. Request 64×64 or multiples (see IMAGE-ASSET-SPEC.md). |
+| `view_image` | View a generated image by `asset_id`. |
+| `regenerate` | Create a new image from an existing asset with overrides. |
+| `list_assets` | List recent assets. |
+| `publish_asset` | Write an asset to the project (e.g. `assets/`). Params: `asset_id`, optional `target_filename`. |
+| `list_models` | List available checkpoint models. |
+| `get_defaults` / `set_defaults` | Get or set default generation parameters. |
+| `get_job` / `get_queue_status` / `cancel_job` | Check or cancel jobs. |
 
-## 5. Workflow Summary for Agents
-
-1. **Check availability**: If a tool call fails with connection or server errors, assume ComfyUI or the MCP server is not running. Inform the user that they need to start ComfyUI and the MCP server (see Prerequisites).
-2. **Generate**: Call `generate_image` with a clear `prompt`. Optionally use `get_defaults` or `list_models` first.
-3. **Inspect**: Use `view_image` with the returned `asset_id` if the agent or user needs to verify the result.
-4. **Iterate**: Use `regenerate` with the same `asset_id` and parameter overrides if the user wants changes.
-5. **Persist**: Use `publish_asset` to write the final image into the project (e.g. `assets/`), or document where the file is so the user can copy it into the project.
-6. **Reference in project**: When adding or updating code or docs that use the image, reference the path under `assets/` (e.g. `assets/cat-walk-spritesheet.png`) and keep paths relative to the project root where appropriate.
+**Workflow (ComfyUI):** Check server is up → call `generate_image` with prompt and size → optionally `view_image` → `publish_asset` or document where the file was written.
 
 ---
 
-## 6. Limitations and Notes
+## 4. AutoSprite Tools (19)
 
-- **Session scope**: `asset_id` values are valid only for the current MCP server session. After a restart, previously generated assets are no longer addressable by those IDs; only files already published or saved to disk remain.
-- **Local only**: The MCP server and ComfyUI are expected to run on the same machine as the agent (e.g. `http://127.0.0.1:9000/mcp`). Do not assume a remote ComfyUI URL unless documented.
-- **Tool schema**: Agents should read the actual MCP tool descriptors (e.g. parameter names and types) before calling tools; this guide summarizes usage and project conventions, not the exact API contract.
+Use these when the AutoSprite MCP server is available (e.g. `project-0-CatCity-autosprite`).
+
+### Account
+
+| Tool | Description |
+|------|-------------|
+| `get_account` | Check credit balance (call before generating). |
+
+### Characters
+
+| Tool | Description |
+|------|-------------|
+| `create_character` | Create a character from a text description. |
+| `get_character` | Get character details and spritesheets. |
+| `list_characters` | List characters (pagination, search). |
+
+### Spritesheets
+
+| Tool | Description |
+|------|-------------|
+| `generate_spritesheet` | Generate animations and export a spritesheet (returns usage). |
+| `regenerate_spritesheet` | Regenerate at different sizes from existing video (free). |
+| `get_spritesheet` | Get a spritesheet and download URL. |
+| `list_spritesheets` | List spritesheets for a character. |
+
+### Jobs
+
+| Tool | Description |
+|------|-------------|
+| `get_job_status` | Check spritesheet export job status. |
+| `list_jobs` | List export jobs (use jobId for status). |
+
+### Assets (props / static objects)
+
+| Tool | Description |
+|------|-------------|
+| `create_asset` | Save an asset from an image URL (from e.g. `generate_asset_preview`). |
+| `get_asset` | Get asset details. |
+| `list_assets` | List assets. |
+| `generate_asset_preview` | Generate preview images (category, description, style). Costs 1 credit; returns 4 image URLs. |
+| `generate_asset_3d_model` | Generate a 3D model from an asset image. |
+| `animate_asset` | Generate an animation video from an asset. Costs 5 credits; returns `jobId`. |
+| `generate_asset_spritesheet` | Generate a spritesheet from an asset’s animation (frameSize, maxFrames, removeBg). Free; returns `jobId`. |
+| `get_asset_spritesheet` | Get spritesheet info and download URL. |
+| `get_asset_job_status` | Check status of an asset animation or spritesheet job. Poll every ≥30 s. |
 
 ---
 
-## 7. References
+## 5. Project Conventions
 
-- **IMAGE-ASSET-SPEC.md**: Pixel dimensions (64×64 or multiples), file format (PNG preferred), and sprite-sheet layout and splitting for animation.
-- ComfyUI MCP Server (this project): typically installed at `C:\Users\<user>\OneDrive\Documents\Project\comfyui-mcp-server`; run via `scripts/run-comfyui-mcp.ps1` or `scripts/run-comfyui-mcp.bat` in this repo.
-- Upstream: [joenorton/comfyui-mcp-server](https://github.com/joenorton/comfyui-mcp-server) for full tool list, parameters, and publish/config details.
+- **Storage**: Save final assets under `public/assets/sprites/` (e.g. `facilities/<name>-sheet.png`) or `assets/` as appropriate.
+- **Naming**: Lowercase, hyphenated (e.g. `fish-bowl-sheet.png`).
+- **Dimensions and format**: 64×64 or multiples of 64; PNG preferred. See **IMAGE-ASSET-SPEC.md**.
+- **4-frame sheets from AutoSprite**: Expect **2×2** layout; use 2×2 in code (see § 7).
 
 ---
 
-## 8. End-to-end workflow: MCP generation to in-game use
+## 6. Workflow Summary
 
-This section documents a repeatable workflow from generating a sprite sheet via MCP to using it in the game, including **pixel/layout handling** and **black-background-as-transparent** in the UI. Use it as a template for similar assets (e.g. multi-state facility icons).
+### 6.1 ComfyUI
 
-### 8.1 MCP options
+1. Ensure ComfyUI and MCP server are running.
+2. Call `generate_image` with prompt and width/height (64 or multiple).
+3. Optionally `view_image`; then `publish_asset` or document the output path.
+4. Reference the asset path in the project.
 
-- **ComfyUI** (this guide §§ 1–6): Local, prompt-based image generation; good for custom dimensions and styles. Use `generate_image` with width/height (e.g. 64×64 multiples).
-- **AutoSprite** (optional): Cloud MCP at `https://www.autosprite.io/api/mcp`; good for prop/character sprites and animation strips. Configure in `.cursor/mcp.json` with `type: "http"`, `url`, and `Authorization: Bearer <API_KEY>`. Server name in Cursor may be e.g. `project-0-CatCity-autosprite`.
+### 6.2 AutoSprite (e.g. 4-frame prop spritesheet)
 
-### 8.2 Example: Fish-bowl sprite (AutoSprite)
+1. **Check balance**: `get_account`.
+2. **Preview**: `generate_asset_preview` (category, description, style) → pick one image URL.
+3. **Create asset**: `create_asset` (name, imageUrl).
+4. **Animate**: `animate_asset` (assetId, animationPrompt, max 200 chars) → get `jobId`.
+5. **Poll**: `get_asset_job_status(jobId)` every ≥30 s until `status === "succeeded"`.
+6. **Spritesheet**: `generate_asset_spritesheet` (assetId, frameSize e.g. 128, maxFrames e.g. 4, removeBg e.g. `"default"`) → new `jobId`.
+7. **Poll again**: `get_asset_job_status` until done → use returned `spritesheetUrl`.
+8. **Download**: Save image to e.g. `public/assets/sprites/facilities/<name>-sheet.png`.
 
-1. **Check credits**: `get_account` (no args).
-2. **Preview asset**: `generate_asset_preview` with `category: "prop"`, `description` (e.g. round blue glass fish bowl, water, orange fish), `style: "flat"`. Returns 4 image URLs (costs 1 credit).
-3. **Create asset**: `create_asset` with `name`, `imageUrl` (one of the preview URLs), optional `description`. Free.
-4. **Animate for states**: `animate_asset` with `assetId`, `animationPrompt` (e.g. “Four states: empty bowl, then few fish, then half full, then full of fish. 2D flat.”, max 200 chars), optional `isLooping: false`, `quality: "standard"`. Returns `jobId` (costs 5 credits).
-5. **Poll job**: `get_asset_job_status` with `jobId`. Wait at least 30 s before first check, then 30 s between checks. When `status === "succeeded"`, you get `videoUrl`, `spritesheetUrl`, `atlasUrl`.
-6. **Custom spritesheet**: `generate_asset_spritesheet` with `assetId`, `frameSize` (e.g. 128), `maxFrames` (e.g. 4), `removeBg` (e.g. `"default"`). Free; returns a new `jobId`. Poll with `get_asset_job_status` again until done, then use the returned `spritesheetUrl`.
-7. **Download**: Save the image from `spritesheetUrl` into the project (e.g. `public/assets/sprites/facilities/<name>-sheet.png`).
+**Note:** AutoSprite returns **2×2** for 4 frames. Do not assume 1×4. See IMAGE-ASSET-SPEC.md and § 7 below.
 
-### 8.3 Pixel and layout: 2×2 vs 1×4
+---
 
-- **AutoSprite behaviour**: For 4 frames, the API often returns a **2×2 grid** (two rows, two columns), not a 1×4 horizontal strip. The game must interpret the sheet as 2×2.
-- **Frame index → cell**: Row-major order: frame 0 = top-left, 1 = top-right, 2 = bottom-left, 3 = bottom-right. So:
-  - `col = frameIndex % 2`
-  - `row = Math.floor(frameIndex / 2)`
-- **Optional post-processing**: If you need a 1×4 strip (e.g. 512×128), use a script to re-layout: load the 2×2 image, extract four tiles (e.g. (0,0), (1,0), (0,1), (1,1)), composite them in a single row, then save. The in-game code can still treat either 2×2 or 1×4; the important part is consistent `background-size` and `background-position` (see § 8.5).
+## 7. End-to-End: MCP Generation to In-Game Use
 
-### 8.4 Black background and “transparent” in-game
+This section covers **pixel/layout handling** and **black-background-as-transparent** so generated sprites work in the game. Use it as a template for multi-frame assets (e.g. facility icons).
 
-- **Why black**: Some MCP outputs (or post-processing) use a solid black background. To avoid a visible black rectangle in the UI, treat black as transparent in the game.
-- **Option A – Replace black with alpha (offline)**: In a build step or script, open the PNG and set alpha to 0 where RGB is (0,0,0) (or near-black). Save as PNG with transparency. No special CSS needed.
-- **Option B – Blend in-game (recommended for black sheets)**: Keep the black-background PNG and use **`mix-blend-mode: lighten`** on the icon element. With lighten, black (0,0,0) does not add light, so the underlying tile/background shows through; non-black pixels (the sprite) remain visible. No asset change required.
-- **CSS**: e.g. `.facility-icon-fish-bowl { mix-blend-mode: lighten; }` (plus the sprite background styles below).
+### 7.1 Pixel and layout: 2×2 (AutoSprite)
 
-### 8.5 Using the sprite sheet in the game
+- For 4 frames, AutoSprite returns a **2×2 grid**. The game must use 2×2.
+- **Frame index → cell:** row-major: 0 = top-left, 1 = top-right, 2 = bottom-left, 3 = bottom-right.
+  - `col = frameIndex % 2`, `row = Math.floor(frameIndex / 2)`.
+- **Optional:** If you need 1×4 (e.g. 512×128), a script can re-layout the 2×2 image; in-game code can still use 2×2 or 1×4 as long as `background-size` and `background-position` match the actual layout.
 
-- **Element**: Use a `<span>` (or `<div>`) with `background-image` pointing to the sheet PNG, not an `<img>` with `src`, so you can control which frame is visible via `background-position`.
-- **2×2 layout** (one frame = one quadrant):
-  - `background-size: 200% 200%` so the full image is 2× the element in each axis; one quadrant fills the element.
-  - `background-position: <x> <y>` where `x = (frameIndex % 2) * 100%`, `y = Math.floor(frameIndex / 2) * 100%`:
-    - Frame 0: `0% 0%`
-    - Frame 1: `100% 0%`
-    - Frame 2: `0% 100%`
-    - Frame 3: `100% 100%`
-- **Helper in code** (e.g. `src/ui.js`):
-  ```js
-  function fishBowlBackgroundPosition2x2(frameIndex) {
-    const col = frameIndex % 2;
-    const row = Math.floor(frameIndex / 2);
-    return `${col * 100}% ${row * 100}%`;
-  }
-  ```
-- **Toolbar**: For the tool button, use the same class and sheet; default `background-position: 0 0` shows frame 0.
-- **Board**: For each facility instance, set `background-position` from the current state (e.g. `facilityUsage.remaining`). Store `dataset.facilityId` on the tile so you can update by id.
-- **Per-tick updates**: When the simulation ticks, update only the fish-bowl icons (not the whole board): e.g. `updateFishBowlFrames(boardEl, facilityUsage)` that loops over `boardEl.querySelectorAll('.tile[data-facility-id]')`, reads `facilityUsage.get(tile.dataset.facilityId)`, maps `remaining` to `frameIndex`, and sets `icon.style.backgroundPosition = fishBowlBackgroundPosition2x2(frameIndex)`. Call this from the same place that runs `renderCats` / HUD updates (e.g. `rerenderDynamic` in the game controller).
+### 7.2 Black background as transparent
 
-### 8.6 Checklist for a new multi-frame asset
+- Some outputs use a solid black background. To avoid a black rectangle in the UI:
+  - **Option A:** Offline: set alpha to 0 where RGB is (0,0,0); save PNG. No special CSS.
+  - **Option B (recommended):** Keep the black PNG; use **`mix-blend-mode: lighten`** on the icon element. Black does not add light, so the background shows through; the sprite stays visible.
 
-1. Generate (ComfyUI or AutoSprite) and download the sprite image.
-2. Note the **layout** (2×2, 1×4, etc.) and **frame count**.
-3. If background is black and you want it transparent in-game, either flatten to alpha in a script or use **`mix-blend-mode: lighten`** on the icon element.
-4. In CSS: `background-size` and default `background-position` so one frame fills the element (e.g. 200% 200% for 2×2).
-5. In JS: map game state → `frameIndex`, set `background-position` using the same formula (e.g. 2×2: `col = frameIndex % 2`, `row = Math.floor(frameIndex / 2)`).
-6. For state that changes every tick, add an `update*Frames`-style function and call it from the dynamic render path so the icon updates without re-rendering the whole board.
+### 7.3 Using the sprite sheet in the game
+
+- Use a **`<span>`** (or `<div>`) with **`background-image`** (not `<img src>`), so the frame is controlled by **`background-position`**.
+- **2×2 layout:**
+  - `background-size: 200% 200%` (one quadrant = one frame).
+  - `background-position: (col*100)% (row*100)%` with `col = frameIndex % 2`, `row = Math.floor(frameIndex / 2)`.
+- **Helper:** e.g. `spriteBackgroundPosition2x2(frameIndex)` returning `${col*100}% ${row*100}%`.
+- **Toolbar:** Same sheet; fix position to one frame (e.g. full = last frame).
+- **Board:** Per instance, set `background-position` from game state (e.g. `facilityUsage.remaining`). Store `dataset.facilityId` on the tile.
+- **Per-tick updates:** Call an `update*Frames(boardEl, facilityUsage)` from the dynamic render path (e.g. `rerenderDynamic`) so icons update without re-rendering the whole board.
+
+### 7.4 Checklist for a new multi-frame asset
+
+1. Generate (ComfyUI or AutoSprite) and download the sprite.
+2. Note **layout** (2×2, 1×4) and **frame count**.
+3. If background is black, use alpha replacement or **`mix-blend-mode: lighten`**.
+4. CSS: `background-size` and default `background-position` (e.g. 200% 200% for 2×2).
+5. JS: map game state → `frameIndex`, set `background-position` with the same formula.
+6. For state that changes every tick, add `update*Frames` and call it from the dynamic render path.
+
+---
+
+## 8. Limitations and Notes
+
+- **ComfyUI:** `asset_id` and session are transient; after restart only published files remain. Server is local only.
+- **AutoSprite:** Credits are consumed per call (preview, animate); spritesheet generation is free. Poll jobs every ≥30 s to avoid rate limits.
+- **Tool schema:** Always read the MCP tool descriptors for exact parameters; this guide summarizes usage and project conventions.
+
+---
+
+## 9. References
+
+- **IMAGE-ASSET-SPEC.md**: Pixel dimensions (64 or multiples), format (PNG), **2×2 layout** for 4-frame sheets from AutoSprite, and in-code usage.
+- **ComfyUI MCP**: e.g. [joenorton/comfyui-mcp-server](https://github.com/joenorton/comfyui-mcp-server); run via project scripts if present.
+- **AutoSprite**: [autosprite.io](https://www.autosprite.io), API at `https://www.autosprite.io/api/mcp`.
