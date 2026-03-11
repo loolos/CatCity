@@ -98,7 +98,7 @@ export function renderTools({
   if (selectedTool === 'tunnel') {
     const tip = document.createElement('span');
     tip.className = 'tool-inline-hint';
-    tip.textContent = 'Click a placed tunnel to toggle horizontal / vertical direction';
+    tip.textContent = 'Tunnels are directional: horizontal (left→right), vertical (top↕bottom). Click to toggle orientation.';
     toolsEl.append(tip);
 
     const orientSelect = document.createElement('select');
@@ -117,16 +117,12 @@ export function renderTools({
   }
 }
 
-export function renderBuildNote({ buildNoteEl, facilities, selectedTool, tunnelBuffer }) {
+export function renderBuildNote({ buildNoteEl, facilities, selectedTool }) {
   const counts = ['fish', 'bed', 'laser', 'tunnel']
     .map((t) => `${t}: ${facilities.filter((f) => f.type === t).length}/${MAX_FACILITY_COUNTS[t]}`)
     .join(' | ');
-  if (selectedTool === 'tunnel' && tunnelBuffer) {
-    buildNoteEl.textContent = `${counts} | Select second tunnel endpoint (same row=horizontal, same col=vertical).`;
-    return;
-  }
   if (selectedTool === 'tunnel') {
-    buildNoteEl.textContent = `${counts} | Place tunnel endpoints in one row/col. Click a tunnel to toggle horizontal/vertical display.`;
+    buildNoteEl.textContent = `${counts} | Single-tile directional tunnel: horizontal allows left→right only, vertical allows up/down only.`;
     return;
   }
   if (selectedTool === 'laser') {

@@ -37,40 +37,10 @@ function nextTunnelOrientation(orientation) {
 function removeFacilityAt(state, x, y) {
   const idx = state.facilities.findIndex((f) => posKey(f.pos.x, f.pos.y) === posKey(x, y));
   if (idx < 0) return;
-  const target = state.facilities[idx];
   state.facilities.splice(idx, 1);
-
-  if (target.type === 'tunnel' && target.pairId) {
-    const pair = state.facilities.find((f) => f.id === target.pairId);
-    if (pair) {
-      pair.pairId = null;
-    }
-  }
-
-  if (state.tunnelBuffer === target.id) state.tunnelBuffer = null;
 }
 
 const BASE_TICK_MS = 450;
-
-function collectTunnelPairs(facilities) {
-  const tunnels = facilities.filter((f) => f.type === 'tunnel' && f.pairId);
-  const tunnelPairs = [];
-  const used = new Set();
-
-  for (const t of tunnels) {
-    if (used.has(t.id)) continue;
-    const pair = facilities.find((f) => f.id === t.pairId);
-    if (!pair) continue;
-    const horizontal = t.pos.y === pair.pos.y;
-    const vertical = t.pos.x === pair.pos.x;
-    if (!horizontal && !vertical) continue;
-    tunnelPairs.push([t.pos, pair.pos]);
-    used.add(t.id);
-    used.add(pair.id);
-  }
-
-  return tunnelPairs;
-}
 
 export class GameController {
   constructor() {
@@ -111,7 +81,6 @@ export class GameController {
       buildNoteEl: this.dom.buildNoteEl,
       facilities: this.state.facilities,
       selectedTool: this.state.selectedTool,
-      tunnelBuffer: this.state.tunnelBuffer,
     });
 
     renderBoardStatic({
@@ -153,40 +122,12 @@ export class GameController {
     if (countType(this.state.facilities, type) >= MAX_FACILITY_COUNTS[type]) return;
 
     if (type === 'tunnel') {
-      if (!this.state.tunnelBuffer) {
-        const id = `tunnel-${Date.now()}-${Math.random()}`;
-        this.state.tunnelBuffer = id;
-        this.state.facilities.push({
-          id,
-          type,
-          pos: { x, y },
-          pairId: null,
-          orientation: this.state.selectedTunnelOrientation,
-        });
-        return;
-      }
-
-      const first = this.state.facilities.find((f) => f.id === this.state.tunnelBuffer);
-      if (!first || (first.pos.x === x && first.pos.y === y)) return;
-
-      const orient = this.state.selectedTunnelOrientation;
-      const sameRow = first.pos.y === y;
-      const sameCol = first.pos.x === x;
-      const validHorizontal = orient === 'horizontal' && sameRow && first.pos.x !== x;
-      const validVertical = orient === 'vertical' && sameCol && first.pos.y !== y;
-      if (!validHorizontal && !validVertical) return;
-
-      const secondId = `tunnel-${Date.now()}-${Math.random()}`;
       this.state.facilities.push({
-        id: secondId,
+        id: `tunnel-${Date.now()}-${Math.random()}`,
         type,
         pos: { x, y },
-        pairId: first.id,
-        orientation: orient,
+        orientation: this.state.selectedTunnelOrientation,
       });
-      first.pairId = secondId;
-      first.orientation = orient;
-      this.state.tunnelBuffer = null;
       return;
     }
 
@@ -213,12 +154,7 @@ export class GameController {
       if (existing.type === 'laser' && this.state.selectedTool !== 'erase') {
         existing.direction = nextDirection(existing.direction);
       } else if (existing.type === 'tunnel' && this.state.selectedTool !== 'erase') {
-        const next = nextTunnelOrientation(existing.orientation);
-        existing.orientation = next;
-        if (existing.pairId) {
-          const pair = this.state.facilities.find((f) => f.id === existing.pairId);
-          if (pair) pair.orientation = next;
-        }
+        existing.orientation = nextTunnelOrientation(existing.orientation);
       }
     } else {
       this.addFacility(this.state.selectedTool, x, y);
@@ -251,8 +187,7 @@ export class GameController {
     clearInterval(this.state.loopHandle);
     this.dom.resultEl.innerHTML = '';
     this.state.sim = new Simulation({
-      facilities: this.state.facilities.filter((f) => f.type !== 'tunnel' || f.pairId),
-      tunnelPairs: collectTunnelPairs(this.state.facilities),
+      facilities: this.state.facilities,
       rng: createRng(this.dom.seedInputEl.value.trim() || 'default-seed'),
     });
 
