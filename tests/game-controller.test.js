@@ -123,3 +123,32 @@ test('restarting finished simulation with same seed yields same final score', ()
     restore();
   }
 });
+
+
+test('clicking placed fish with fish tool removes it (erase shortcut)', () => {
+  const { controller, restore } = makeControllerHarness('seed-fish-toggle');
+  try {
+    controller.state.selectedTool = 'fish';
+    controller.onTileClick(1, 1);
+    assert.equal(controller.state.facilities.length, 1);
+
+    controller.onTileClick(1, 1);
+    assert.equal(controller.state.facilities.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+test('clicking placed bed with bed tool removes it (erase shortcut)', () => {
+  const { controller, restore } = makeControllerHarness('seed-bed-toggle');
+  try {
+    controller.state.selectedTool = 'bed';
+    controller.onTileClick(2, 3);
+    assert.equal(controller.state.facilities.length, 1);
+
+    controller.onTileClick(2, 3);
+    assert.equal(controller.state.facilities.length, 0);
+  } finally {
+    restore();
+  }
+});

@@ -34,6 +34,10 @@ function nextTunnelOrientation(orientation) {
   return orientation === 'vertical' ? 'horizontal' : 'vertical';
 }
 
+function isPlacementOnlyFacility(type) {
+  return type === 'fish' || type === 'bed';
+}
+
 function removeFacilityAt(state, x, y) {
   const idx = state.facilities.findIndex((f) => posKey(f.pos.x, f.pos.y) === posKey(x, y));
   if (idx < 0) return;
@@ -154,7 +158,9 @@ export class GameController {
 
     if (idx >= 0) {
       const existing = this.state.facilities[idx];
-      if (existing.type === 'laser' && this.state.selectedTool !== 'erase') {
+      if (isPlacementOnlyFacility(existing.type) && this.state.selectedTool === existing.type) {
+        removeFacilityAt(this.state, x, y);
+      } else if (existing.type === 'laser' && this.state.selectedTool !== 'erase') {
         existing.direction = nextDirection(existing.direction);
       } else if (existing.type === 'tunnel' && this.state.selectedTool !== 'erase') {
         existing.orientation = nextTunnelOrientation(existing.orientation);

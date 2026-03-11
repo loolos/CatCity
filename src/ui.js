@@ -129,6 +129,10 @@ export function renderBuildNote({ buildNoteEl, facilities, selectedTool }) {
     buildNoteEl.textContent = `${counts} | Place a laser, then click it again to rotate direction.`;
     return;
   }
+  if (selectedTool === 'fish' || selectedTool === 'bed') {
+    buildNoteEl.textContent = `${counts} | Click the same fish bowl/cat bed again to remove it.`;
+    return;
+  }
   buildNoteEl.textContent = counts;
 }
 
