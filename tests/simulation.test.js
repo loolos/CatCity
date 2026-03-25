@@ -48,15 +48,23 @@ test('entry and exit fixed coordinates keep a minimum gap on opposite edges', ()
   }
 });
 
-test('planned obstacles never occupy entry or exit and keep a walkable path', () => {
+test('planned obstacles and bushes never occupy entry/exit and keep a walkable path', () => {
   for (let i = 0; i < 30; i += 1) {
     const plan = planMapLayout(createRng(`seed-obstacles-${i}`));
     const obstacleSet = new Set(plan.obstacles.map((o) => `${o.x},${o.y}`));
+    const bushSet = new Set((plan.bushes ?? []).map((b) => `${b.x},${b.y}`));
 
     assert.equal(obstacleSet.has(`${plan.spawnPoint.pos.x},${plan.spawnPoint.pos.y}`), false);
     assert.equal(obstacleSet.has(`${plan.exitPoint.pos.x},${plan.exitPoint.pos.y}`), false);
+    assert.equal(bushSet.has(`${plan.spawnPoint.pos.x},${plan.spawnPoint.pos.y}`), false);
+    assert.equal(bushSet.has(`${plan.exitPoint.pos.x},${plan.exitPoint.pos.y}`), false);
 
-    const path = shortestPath(plan.spawnPoint.pos, plan.exitPoint.pos, GRID_SIZE, (_from, to) => !obstacleSet.has(`${to.x},${to.y}`));
+    const path = shortestPath(
+      plan.spawnPoint.pos,
+      plan.exitPoint.pos,
+      GRID_SIZE,
+      (_from, to) => !obstacleSet.has(`${to.x},${to.y}`) && !bushSet.has(`${to.x},${to.y}`)
+    );
     assert.ok(path?.length);
   }
 });
@@ -73,6 +81,17 @@ test('single-tile horizontal tunnel only allows moving left to right', () => {
   assert.equal(sim.canMoveBetween({ x: 3, y: 2 }, { x: 2, y: 2 }), false);
   assert.equal(sim.canMoveBetween({ x: 2, y: 1 }, { x: 2, y: 2 }), false);
   assert.equal(sim.canMoveBetween({ x: 2, y: 2 }, { x: 2, y: 3 }), false);
+});
+
+test('bushes are fixed blockers and cats cannot move through them', () => {
+  const sim = new Simulation({
+    facilities: [],
+    obstacles: [],
+    bushes: [{ x: 1, y: 1 }],
+    rng: createRng('seed-bush-block'),
+  });
+  assert.equal(sim.canMoveBetween({ x: 1, y: 0 }, { x: 1, y: 1 }), false);
+  assert.equal(sim.canMoveBetween({ x: 0, y: 1 }, { x: 1, y: 1 }), false);
 });
 
 
@@ -220,6 +239,39 @@ test('cats do not move into a tile occupied by another cat', () => {
   sim.moveCat(sim.cats[0], occupiedTiles);
 
   assert.deepEqual(sim.cats[0].pos, { x: 0, y: 0 });
+});
+
+test('curious cat can trigger sunbath detour when no urgent needs', () => {
+  const sim = new Simulation({ facilities: [], tunnelPairs: [], rng: () => 0 });
+  sim.cats = [
+    {
+      id: 1,
+      pos: { x: 2, y: 2 },
+      prevPos: { x: 2, y: 2 },
+      facing: 'right',
+      spawnEdge: 'left',
+      hunger: 10,
+      sleepiness: 10,
+      waitingTurns: 0,
+      serving: null,
+      inTunnel: null,
+      lastSatisfiedNeed: null,
+      lastSatisfiedTurn: -999,
+      satisfiedCount: 0,
+      exiting: false,
+      hasLeftSpawn: true,
+      traits: { obedience: 0.5, curiosity: 1 },
+      detourState: null,
+      detourTurns: 0,
+    },
+  ];
+
+  const cat = sim.cats[0];
+  sim.moveCat(cat, new Set());
+
+  assert.equal(cat.detourState, 'sunbath');
+  assert.deepEqual(cat.pos, { x: 2, y: 2 });
+  assert.ok(cat.recentDecisionReason.includes('Sunbath detour'));
 });
 
 

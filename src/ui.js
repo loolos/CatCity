@@ -176,13 +176,14 @@ function fishBowlDisplayFrame(remaining) {
   return (frameCount - 1) - frame;
 }
 
-export function renderBoardStatic({ boardEl, facilities, obstacles = [], facilityUsage = null, onTileClick }) {
+export function renderBoardStatic({ boardEl, facilities, obstacles = [], bushes = [], facilityUsage = null, onTileClick }) {
   boardEl.innerHTML = '';
   boardEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
   boardEl.style.gridTemplateRows = `repeat(${GRID_SIZE}, 1fr)`;
 
   const laserTargetTiles = new Set();
   const obstacleSet = new Set(obstacles.map((o) => `${o.x},${o.y}`));
+  const bushSet = new Set(bushes.map((b) => `${b.x},${b.y}`));
   for (const facility of facilities) {
     if (facility.type !== 'laser') continue;
     const target = laserTargetForFacility(facility);
@@ -205,9 +206,17 @@ export function renderBoardStatic({ boardEl, facilities, obstacles = [], facilit
         rock.src = assetUrl('sprites/facilities/rock.svg');
         rock.alt = 'rock obstacle';
         tile.append(rock);
+      } else if (bushSet.has(`${x},${y}`)) {
+        tile.classList.add('has-obstacle');
+        const bush = document.createElement('img');
+        bush.className = 'facility-icon obstacle-icon';
+        bush.src = assetUrl('sprites/facilities/bush.svg');
+        bush.alt = 'bush obstacle';
+        tile.append(bush);
       }
 
-      const facility = obstacleSet.has(`${x},${y}`) ? null : facilities.find((f) => f.pos.x === x && f.pos.y === y);
+      const blocked = obstacleSet.has(`${x},${y}`) || bushSet.has(`${x},${y}`);
+      const facility = blocked ? null : facilities.find((f) => f.pos.x === x && f.pos.y === y);
       if (facility) {
         tile.classList.add('has-facility', `facility-${facility.type}`);
         if (facility.type === 'fish') {
@@ -364,6 +373,7 @@ function catIconByNeeds(cat) {
 }
 
 function satisfiedEmojiFor(cat, currentTurn) {
+  if (cat.detourState === 'sunbath' && (cat.detourTurns ?? 0) > 0) return '🌤️';
   if (!cat.lastSatisfiedNeed || currentTurn - cat.lastSatisfiedTurn > SATISFIED_EMOJI_TURNS) return null;
   if (cat.lastSatisfiedNeed === 'hunger') return '🐟';
   if (cat.lastSatisfiedNeed === 'sleepiness') return '💤';

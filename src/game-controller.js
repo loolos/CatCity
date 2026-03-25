@@ -58,6 +58,7 @@ export class GameController {
     const plannedFlow = planMapLayout(createRng(seed));
     this.state.plannedFlow = plannedFlow;
     this.state.obstacles = plannedFlow.obstacles;
+    this.state.bushes = plannedFlow.bushes ?? [];
   }
 
   setSpeedFromInput() {
@@ -92,6 +93,7 @@ export class GameController {
       boardEl: this.dom.boardEl,
       facilities: this.state.facilities,
       obstacles: this.state.obstacles,
+      bushes: this.state.bushes,
       facilityUsage: this.state.sim?.facilityUsage ?? null,
       onTileClick: (x, y) => this.onTileClick(x, y),
     });
@@ -148,6 +150,7 @@ export class GameController {
   onTileClick(x, y) {
     if (this.state.phase !== 'build') return;
     if (this.state.obstacles.some((o) => o.x === x && o.y === y)) return;
+    if (this.state.bushes.some((b) => b.x === x && b.y === y)) return;
 
     const idx = this.state.facilities.findIndex((f) => posKey(f.pos.x, f.pos.y) === posKey(x, y));
     if (this.state.selectedTool === 'erase') {
@@ -198,6 +201,7 @@ export class GameController {
     this.state.sim = new Simulation({
       facilities: this.state.facilities,
       obstacles: this.state.obstacles,
+      bushes: this.state.bushes,
       rng: createRng(this.dom.seedInputEl.value.trim() || 'default-seed'),
     });
 
