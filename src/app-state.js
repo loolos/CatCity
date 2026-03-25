@@ -5,6 +5,7 @@ export function createInitialState() {
     phase: 'build',
     facilities: [],
     obstacles: [],
+    bushes: [],
     sim: null,
     plannedFlow: null,
     loopHandle: null,

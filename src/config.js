@@ -10,10 +10,21 @@ export const OBSTACLE_COUNT_RANGE = {
   min: 2,
   max: 6,
 };
+export const BUSH_COUNT_RANGE = {
+  min: 1,
+  max: 3,
+};
 
 export const NEED_THRESHOLD = 70;
 export const NEED_GAIN_PER_TURN = { hunger: 5, sleepiness: 4 };
 export const NEED_GAIN_WANDER_BONUS = 1;
+export const DETOUR_CONFIG = {
+  enableSunbath: true,
+  minTurns: 1,
+  maxTurns: 2,
+  baseChance: 0.05,
+  curiosityWeight: 0.2,
+};
 
 export const FACILITY_SERVICE_TURNS = {
   fish: 2,

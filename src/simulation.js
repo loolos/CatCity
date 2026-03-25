@@ -10,7 +10,9 @@ import {
   NEED_GAIN_WANDER_BONUS,
   NEED_THRESHOLD,
   OBSTACLE_COUNT_RANGE,
+  BUSH_COUNT_RANGE,
   POINTS,
+  DETOUR_CONFIG,
 } from './config.js';
 import { shortestPath, keyOf } from './pathfinding.js';
 
@@ -74,8 +76,8 @@ function randomIntInRange(rng, min, max) {
   return min + Math.floor(rng() * (max - min + 1));
 }
 
-export function planObstacles(rng, spawnPoint, exitPoint) {
-  const blockedKeys = new Set([keyOf(spawnPoint.pos), keyOf(exitPoint.pos)]);
+function planStaticBlockers(rng, spawnPoint, exitPoint, countRange, fixedBlockedKeys = new Set()) {
+  const blockedKeys = new Set([keyOf(spawnPoint.pos), keyOf(exitPoint.pos), ...fixedBlockedKeys]);
   const candidates = [];
   for (let y = 0; y < GRID_SIZE; y += 1) {
     for (let x = 0; x < GRID_SIZE; x += 1) {
@@ -84,9 +86,9 @@ export function planObstacles(rng, spawnPoint, exitPoint) {
     }
   }
 
-  const targetCount = randomIntInRange(rng, OBSTACLE_COUNT_RANGE.min, OBSTACLE_COUNT_RANGE.max);
+  const targetCount = randomIntInRange(rng, countRange.min, countRange.max);
   const obstacles = [];
-  const obstacleSet = new Set();
+  const obstacleSet = new Set(fixedBlockedKeys);
 
   for (let i = candidates.length - 1; i > 0; i -= 1) {
     const j = Math.floor(rng() * (i + 1));
@@ -107,10 +109,20 @@ export function planObstacles(rng, spawnPoint, exitPoint) {
   return obstacles;
 }
 
+export function planObstacles(rng, spawnPoint, exitPoint) {
+  return planStaticBlockers(rng, spawnPoint, exitPoint, OBSTACLE_COUNT_RANGE);
+}
+
+export function planBushes(rng, spawnPoint, exitPoint, obstacles = []) {
+  const obstacleKeys = new Set(obstacles.map((pos) => keyOf(pos)));
+  return planStaticBlockers(rng, spawnPoint, exitPoint, BUSH_COUNT_RANGE, obstacleKeys);
+}
+
 export function planMapLayout(rng) {
   const { spawnPoint, exitPoint } = planEntryExit(rng);
   const obstacles = planObstacles(rng, spawnPoint, exitPoint);
-  return { spawnPoint, exitPoint, obstacles };
+  const bushes = planBushes(rng, spawnPoint, exitPoint, obstacles);
+  return { spawnPoint, exitPoint, obstacles, bushes };
 }
 
 function pathToEdgePoint(fromPos, edgePoint, canTraverse = null) {
@@ -140,8 +152,15 @@ function happinessOf(cat) {
   return clampNeed(100 - Math.round((cat.hunger + cat.sleepiness) / 2));
 }
 
+function createTraits(rng) {
+  return {
+    obedience: 0.4 + rng() * 0.6,
+    curiosity: 0.4 + rng() * 0.6,
+  };
+}
+
 export class Simulation {
-  constructor({ facilities, tunnelPairs = [], obstacles = [], rng }) {
+  constructor({ facilities, tunnelPairs = [], obstacles = [], bushes = [], rng }) {
     this.turn = 0;
     this.score = 0;
     this.cats = [];
@@ -153,7 +172,8 @@ export class Simulation {
     this.spawnPoint = plannedFlow.spawnPoint;
     this.exitPoint = plannedFlow.exitPoint;
     this.obstacles = obstacles;
-    this.obstacleSet = new Set(this.obstacles.map((pos) => keyOf(pos)));
+    this.bushes = bushes;
+    this.obstacleSet = new Set([...this.obstacles, ...this.bushes].map((pos) => keyOf(pos)));
     this.latestSpawnEdge = this.spawnPoint.edge;
     this.spawnBlocked = false;
     this.spawnedCats = 0;
@@ -215,6 +235,10 @@ export class Simulation {
       satisfiedCount: 0,
       exiting: false,
       hasLeftSpawn: false,
+      traits: createTraits(this.rng),
+      detourState: null,
+      detourTurns: 0,
+      recentDecisionReason: 'Spawned',
     });
   }
 
@@ -378,6 +402,14 @@ export class Simulation {
     if (cat.justFinishedService) return;
     if (cat.serving) return;
 
+    const urgentNeed = cat.hunger >= NEED_THRESHOLD || cat.sleepiness >= NEED_THRESHOLD;
+    if (this.shouldSunbathDetour(cat, urgentNeed)) {
+      cat.prevPos = { ...cat.pos };
+      cat.detourTurns -= 1;
+      cat.recentDecisionReason = `Sunbath detour (${cat.detourTurns} turn left)`;
+      return;
+    }
+
     const target = this.findTarget(cat);
     const from = { ...cat.pos };
     cat.prevPos = from;
@@ -385,6 +417,9 @@ export class Simulation {
     if (target && target.path.length) {
       const planned = target.path[0];
       cat.pos = this.resolveMoveTarget(cat, planned, occupiedTiles);
+      cat.recentDecisionReason = target.facility
+        ? `Heading to ${target.facility.type}`
+        : 'Heading to exit';
     } else {
       const neighbors = [
         { x: cat.pos.x, y: cat.pos.y - 1 },
@@ -398,6 +433,7 @@ export class Simulation {
       cat.pos = this.resolveMoveTarget(cat, selected, occupiedTiles);
       cat.hunger = clampNeed(cat.hunger + NEED_GAIN_WANDER_BONUS);
       cat.sleepiness = clampNeed(cat.sleepiness + NEED_GAIN_WANDER_BONUS);
+      cat.recentDecisionReason = 'Wandering';
     }
     cat.facing = facingFromStep(from, cat.pos, cat.facing);
     if (cat.pos.x !== from.x || cat.pos.y !== from.y) this.addFootprint(from);
@@ -405,6 +441,21 @@ export class Simulation {
     if (cat.hasLeftSpawn && this.isSpawnTile(cat.pos)) this.spawnBlocked = true;
 
     this.tryUseFacility(cat);
+  }
+
+  shouldSunbathDetour(cat, urgentNeed) {
+    if (!DETOUR_CONFIG.enableSunbath) return false;
+    if (cat.exiting || urgentNeed) return false;
+    if ((cat.detourTurns ?? 0) > 0 && cat.detourState === 'sunbath') return true;
+    if (!cat.hasLeftSpawn) return false;
+    if (!cat.traits) return false;
+    const curiosity = cat.traits?.curiosity ?? 0.5;
+    const chance = DETOUR_CONFIG.baseChance + curiosity * DETOUR_CONFIG.curiosityWeight;
+    if (this.rng() >= chance) return false;
+    const span = Math.max(1, DETOUR_CONFIG.maxTurns - DETOUR_CONFIG.minTurns + 1);
+    cat.detourState = 'sunbath';
+    cat.detourTurns = DETOUR_CONFIG.minTurns + Math.floor(this.rng() * span);
+    return true;
   }
 
   processExit(cat) {
