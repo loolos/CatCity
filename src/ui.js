@@ -373,6 +373,7 @@ function catIconByNeeds(cat) {
 }
 
 function satisfiedEmojiFor(cat, currentTurn) {
+  if ((cat.blockedTurns ?? 0) > 0) return '💭';
   if (cat.detourState === 'sunbath' && (cat.detourTurns ?? 0) > 0) return '🌤️';
   if (!cat.lastSatisfiedNeed || currentTurn - cat.lastSatisfiedTurn > SATISFIED_EMOJI_TURNS) return null;
   if (cat.lastSatisfiedNeed === 'hunger') return '🐟';
