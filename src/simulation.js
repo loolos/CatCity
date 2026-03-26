@@ -238,6 +238,7 @@ export class Simulation {
       traits: createTraits(this.rng),
       detourState: null,
       detourTurns: 0,
+      blockedTurns: 0,
       recentDecisionReason: 'Spawned',
     });
   }
@@ -303,9 +304,30 @@ export class Simulation {
   resolveMoveTarget(cat, plannedPos, occupiedTiles) {
     const desired = this.maybeApplyLaser(cat, plannedPos);
     const blocked = occupiedTiles.has(keyOf(desired));
-    if (blocked) return { ...cat.pos };
-    if (this.obstacleSet.has(keyOf(desired))) return { ...cat.pos };
-    return desired;
+    if (!blocked && !this.obstacleSet.has(keyOf(desired))) return desired;
+
+    cat.blockedTurns = (cat.blockedTurns ?? 0) + 1;
+    if (cat.blockedTurns < 3) return { ...cat.pos };
+
+    const alternatives = [
+      { x: cat.pos.x, y: cat.pos.y - 1 },
+      { x: cat.pos.x + 1, y: cat.pos.y },
+      { x: cat.pos.x, y: cat.pos.y + 1 },
+      { x: cat.pos.x - 1, y: cat.pos.y },
+    ]
+      .filter((n) => n.x >= 0 && n.y >= 0 && n.x < GRID_SIZE && n.y < GRID_SIZE)
+      .filter((n) => this.canMoveBetween(cat.pos, n))
+      .filter((n) => !occupiedTiles.has(keyOf(n)));
+
+    if (!alternatives.length) return { ...cat.pos };
+
+    alternatives.sort((a, b) => {
+      const da = Math.abs(a.x - desired.x) + Math.abs(a.y - desired.y);
+      const db = Math.abs(b.x - desired.x) + Math.abs(b.y - desired.y);
+      if (da !== db) return da - db;
+      return this.rng() - 0.5;
+    });
+    return alternatives[0];
   }
 
   tryUseFacility(cat) {
@@ -436,7 +458,10 @@ export class Simulation {
       cat.recentDecisionReason = 'Wandering';
     }
     cat.facing = facingFromStep(from, cat.pos, cat.facing);
-    if (cat.pos.x !== from.x || cat.pos.y !== from.y) this.addFootprint(from);
+    if (cat.pos.x !== from.x || cat.pos.y !== from.y) {
+      cat.blockedTurns = 0;
+      this.addFootprint(from);
+    }
     if (!cat.hasLeftSpawn && !this.isSpawnTile(cat.pos)) cat.hasLeftSpawn = true;
     if (cat.hasLeftSpawn && this.isSpawnTile(cat.pos)) this.spawnBlocked = true;
 

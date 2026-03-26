@@ -241,6 +241,44 @@ test('cats do not move into a tile occupied by another cat', () => {
   assert.deepEqual(sim.cats[0].pos, { x: 0, y: 0 });
 });
 
+test('cat sidesteps after repeated blocking to break deadlocks', () => {
+  const sim = new Simulation({
+    facilities: [{ id: 'f1', type: 'fish', pos: { x: 1, y: 0 } }],
+    tunnelPairs: [],
+    rng: () => 0,
+  });
+
+  const cat = {
+    id: 1,
+    pos: { x: 0, y: 0 },
+    prevPos: { x: 0, y: 0 },
+    facing: 'right',
+    spawnEdge: 'left',
+    hunger: 100,
+    sleepiness: 0,
+    waitingTurns: 0,
+    serving: null,
+    inTunnel: null,
+    lastSatisfiedNeed: null,
+    lastSatisfiedTurn: -999,
+    satisfiedCount: 0,
+    exiting: false,
+    blockedTurns: 0,
+  };
+  sim.cats = [cat];
+
+  const occupiedTiles = new Set(['1,0']);
+  sim.moveCat(cat, occupiedTiles);
+  assert.deepEqual(cat.pos, { x: 0, y: 0 });
+
+  sim.moveCat(cat, occupiedTiles);
+  assert.deepEqual(cat.pos, { x: 0, y: 0 });
+
+  sim.moveCat(cat, occupiedTiles);
+  assert.deepEqual(cat.pos, { x: 0, y: 1 });
+  assert.equal(cat.blockedTurns, 0);
+});
+
 test('curious cat can trigger sunbath detour when no urgent needs', () => {
   const sim = new Simulation({ facilities: [], tunnelPairs: [], rng: () => 0 });
   sim.cats = [
