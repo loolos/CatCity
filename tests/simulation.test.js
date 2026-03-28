@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../src/rng.js';
-import { GRID_SIZE, POINTS } from '../src/config.js';
+import { CATS_PER_GAME, GAME_TURNS, GRID_SIZE, POINTS } from '../src/config.js';
 import { shortestPath } from '../src/pathfinding.js';
 import { planEntryExit, planMapLayout, Simulation } from '../src/simulation.js';
 
@@ -109,6 +109,18 @@ test('spawn metadata exposes edge and off-board previous position', () => {
     cat.prevPos.x >= GRID_SIZE ||
     cat.prevPos.y >= GRID_SIZE;
   assert.equal(isOutside, true);
+});
+
+test('spawn schedule uses an exponential-like early bias across total turns', () => {
+  const sim = new Simulation({ facilities: [], tunnelPairs: [], rng: createRng('seed-spawn-schedule') });
+  assert.equal(sim.spawnSchedule.length, CATS_PER_GAME);
+  assert.equal(new Set(sim.spawnSchedule).size, CATS_PER_GAME);
+  assert.equal(sim.spawnSchedule[0] >= 1, true);
+  assert.equal(sim.spawnSchedule.at(-1) <= GAME_TURNS, true);
+  assert.equal(sim.spawnSchedule.every((turn, idx, arr) => idx === 0 || turn > arr[idx - 1]), true);
+
+  const avgSpawnTurn = sim.spawnSchedule.reduce((sum, turn) => sum + turn, 0) / sim.spawnSchedule.length;
+  assert.equal(avgSpawnTurn < GAME_TURNS / 2, true);
 });
 
 test('spawn and exit points are fixed within one simulation', () => {
