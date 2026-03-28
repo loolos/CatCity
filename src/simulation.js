@@ -1,11 +1,11 @@
 import {
+  CATS_PER_GAME,
   CAT_FOOTPRINT_TURNS,
-  CAT_SPAWN_INTERVAL,
+  CAT_SPAWN_DISTRIBUTION_LAMBDA,
   FACILITY_SERVICE_TURNS,
   GAME_TURNS,
   GRID_SIZE,
   LOOP_WINDOW_TURNS,
-  MAX_CATS,
   NEED_GAIN_PER_TURN,
   NEED_GAIN_WANDER_BONUS,
   NEED_THRESHOLD,
@@ -159,6 +159,29 @@ function createTraits(rng) {
   };
 }
 
+function sampleTurnFromTruncatedExponential(rng) {
+  const lambda = CAT_SPAWN_DISTRIBUTION_LAMBDA;
+  const u = rng();
+  const normalized = -Math.log(1 - u * (1 - Math.exp(-lambda))) / lambda;
+  return 1 + Math.floor(normalized * Math.max(1, GAME_TURNS - 1));
+}
+
+function buildSpawnSchedule(rng, catCount) {
+  if (catCount <= 0) return [];
+  const rawTurns = [];
+  for (let i = 0; i < catCount; i += 1) {
+    rawTurns.push(sampleTurnFromTruncatedExponential(rng));
+  }
+  rawTurns.sort((a, b) => a - b);
+  const schedule = [];
+  for (let i = 0; i < rawTurns.length; i += 1) {
+    const minTurn = i === 0 ? 1 : schedule[i - 1] + 1;
+    const maxTurn = GAME_TURNS - (rawTurns.length - 1 - i);
+    schedule.push(Math.max(minTurn, Math.min(rawTurns[i], maxTurn)));
+  }
+  return schedule;
+}
+
 export class Simulation {
   constructor({ facilities, tunnelPairs = [], obstacles = [], bushes = [], rng }) {
     this.turn = 0;
@@ -177,6 +200,8 @@ export class Simulation {
     this.latestSpawnEdge = this.spawnPoint.edge;
     this.spawnBlocked = false;
     this.spawnedCats = 0;
+    this.spawnSchedule = buildSpawnSchedule(this.rng, CATS_PER_GAME);
+    this.nextSpawnScheduleIndex = 0;
     this.exitStats = {
       exitedCats: 0,
       poorExitCats: 0,
@@ -211,7 +236,7 @@ export class Simulation {
   }
 
   spawnCat() {
-    if (this.spawnedCats >= MAX_CATS || this.spawnBlocked) return;
+    if (this.spawnedCats >= CATS_PER_GAME || this.spawnBlocked) return false;
     const spawn = this.spawnPoint;
 
     this.lastCatId += 1;
@@ -241,6 +266,7 @@ export class Simulation {
       blockedTurns: 0,
       recentDecisionReason: 'Spawned',
     });
+    return true;
   }
 
   getFacilitiesByType(type) {
@@ -503,7 +529,10 @@ export class Simulation {
     this.ageScorePopups();
     this.ageFootprints();
 
-    if (this.turn === 1 || this.turn % CAT_SPAWN_INTERVAL === 0) this.spawnCat();
+    if (this.nextSpawnScheduleIndex < this.spawnSchedule.length && this.turn >= this.spawnSchedule[this.nextSpawnScheduleIndex]) {
+      const didSpawn = this.spawnCat();
+      if (didSpawn) this.nextSpawnScheduleIndex += 1;
+    }
 
     for (const cat of this.cats) {
       cat.justFinishedService = false;
